@@ -30,6 +30,7 @@ const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1"];
 
 const storageKey = "phone-sales-manager-v1";
 const syncEnabled = location.protocol === "http:" || location.protocol === "https:";
+const githubSyncKey = `${storageKey}-github-sync`;
 
 const makeId = () => {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -177,6 +178,7 @@ function bindEvents() {
   document.querySelector("#clearFormBtn").addEventListener("click", clearForm);
   document.querySelector("#addAppBtn").addEventListener("click", addAppOption);
   document.querySelector("#deleteAppBtn").addEventListener("click", deleteAppOption);
+  document.querySelector("#githubSyncBtn").addEventListener("click", setupGitHubSync);
   document.querySelector("#resetDemoBtn").addEventListener("click", () => {
     data = { ...cloneData(demoData), platforms: [...platforms] };
     persist();
@@ -583,6 +585,8 @@ async function loadData() {
     const remote = await loadRemoteData();
     if (remote) return remote;
   }
+  const githubRemote = await loadGitHubData();
+  if (githubRemote) return githubRemote;
   const raw = localStorage.getItem(storageKey);
   if (!raw) return normalizeData({ ...cloneData(demoData), platforms: [...defaultPlatforms] });
   try {
@@ -597,6 +601,119 @@ function persist() {
   data.platforms = platforms;
   localStorage.setItem(storageKey, JSON.stringify(data));
   if (syncEnabled) saveRemoteData();
+  saveGitHubData();
+}
+
+async function setupGitHubSync() {
+  const current = getGitHubConfig();
+  const repo = prompt("GitHub\u4ed3\u5e93\uff0c\u683c\u5f0f\uff1a\u7528\u6237\u540d/\u4ed3\u5e93\u540d", current.repo || "fight4ever4freedom/phone-sales-sync");
+  if (!repo) return;
+  const branch = prompt("\u5206\u652f\u540d", current.branch || "main") || "main";
+  const token = prompt("GitHub Token\uff08\u53ea\u9700\u8981\u8fd9\u4e2a\u4ed3\u5e93\u7684 Contents \u8bfb\u5199\u6743\u9650\uff09", current.token || "");
+  if (!token) return;
+  localStorage.setItem(githubSyncKey, JSON.stringify({
+    repo: repo.trim(),
+    branch: branch.trim(),
+    token: token.trim(),
+    path: "data.json",
+  }));
+  const remote = await loadGitHubData();
+  if (remote) {
+    if (confirm("\u5df2\u627e\u5230 GitHub \u4e0a\u7684\u6570\u636e\uff0c\u662f\u5426\u62c9\u53d6\u5e76\u8986\u76d6\u5f53\u524d\u9875\u9762\u6570\u636e\uff1f")) {
+      data = remote;
+      platforms = data.platforms || [...defaultPlatforms];
+      fillOptions();
+      persist();
+      render();
+    }
+  } else if (confirm("GitHub \u4e0a\u8fd8\u6ca1\u6709 data.json\uff0c\u662f\u5426\u628a\u5f53\u524d\u6570\u636e\u4e0a\u4f20\uff1f")) {
+    await saveGitHubData(true);
+    alert("\u5df2\u4e0a\u4f20\u5230 GitHub\u3002");
+  }
+}
+
+function getGitHubConfig() {
+  try {
+    return JSON.parse(localStorage.getItem(githubSyncKey) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function loadGitHubData() {
+  const config = getGitHubConfig();
+  if (!config.repo || !config.token) return null;
+  try {
+    const response = await fetch(gitHubContentUrl(config), {
+      cache: "no-store",
+      headers: gitHubHeaders(config),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) return null;
+    const file = await response.json();
+    const parsed = JSON.parse(decodeBase64(file.content || ""));
+    return parsed.phones && parsed.records ? normalizeData(parsed) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveGitHubData(showErrors = false) {
+  const config = getGitHubConfig();
+  if (!config.repo || !config.token) return;
+  try {
+    const current = await fetch(gitHubContentUrl(config), {
+      cache: "no-store",
+      headers: gitHubHeaders(config),
+    });
+    const body = {
+      message: `sync data ${new Date().toISOString()}`,
+      content: encodeBase64(JSON.stringify(data, null, 2)),
+      branch: config.branch || "main",
+    };
+    if (current.ok) {
+      const file = await current.json();
+      body.sha = file.sha;
+    }
+    const response = await fetch(gitHubContentUrl(config), {
+      method: "PUT",
+      headers: {
+        ...gitHubHeaders(config),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok && showErrors) alert("\u4e0a\u4f20 GitHub \u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 Token \u6743\u9650\u3002");
+  } catch {
+    if (showErrors) alert("\u4e0a\u4f20 GitHub \u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u3002");
+  }
+}
+
+function gitHubContentUrl(config) {
+  const path = config.path || "data.json";
+  const branch = encodeURIComponent(config.branch || "main");
+  return `https://api.github.com/repos/${config.repo}/contents/${path}?ref=${branch}`;
+}
+
+function gitHubHeaders(config) {
+  return {
+    "Accept": "application/vnd.github+json",
+    "Authorization": `Bearer ${config.token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+function encodeBase64(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function decodeBase64(value) {
+  const binary = atob(String(value).replace(/\s/g, ""));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 async function loadRemoteData() {
