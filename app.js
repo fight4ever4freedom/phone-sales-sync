@@ -39,9 +39,9 @@ const makeId = () => {
 
 const demoData = {
   phones: [
-    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, laborCost: 0, carrier: "\u8054\u901a", cardOwner: "", deviceNo: "A01", slotNo: "1" },
-    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, laborCost: 0, carrier: "\u8054\u901a", cardOwner: "", deviceNo: "A01", slotNo: "2" },
-    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, laborCost: 0, carrier: "\u8054\u901a", cardOwner: "", deviceNo: "A02", slotNo: "1" },
+    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "1" },
+    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "2" },
+    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A02", slotNo: "1" },
   ],
   records: [],
 };
@@ -64,6 +64,9 @@ demoData.records = [
 let data = normalizeData({ ...cloneData(demoData), platforms: [...defaultPlatforms] });
 let platforms = data.platforms || [...defaultPlatforms];
 let editingId = null;
+let copiedRecord = null;
+let selectedPhoneLookupId = "";
+const undoStack = [];
 
 const form = document.querySelector("#recordForm");
 const els = {
@@ -73,8 +76,10 @@ const els = {
   availableCount: document.querySelector("#availableCount"),
   blockedCount: document.querySelector("#blockedCount"),
   costTotal: document.querySelector("#costTotal"),
+  loginCheckDueCount: document.querySelector("#loginCheckDueCount"),
   cancelDueCount: document.querySelector("#cancelDueCount"),
   formTotalCost: document.querySelector("#formTotalCost"),
+  formLoginCheckHint: document.querySelector("#formLoginCheckHint"),
   formCancelHint: document.querySelector("#formCancelHint"),
   phoneOptions: document.querySelector("#phoneOptions"),
   quickPhoneList: document.querySelector("#quickPhoneList"),
@@ -86,9 +91,12 @@ const els = {
   matrixTable: document.querySelector("#matrixTable"),
   recordList: document.querySelector("#recordList"),
   phoneList: document.querySelector("#phoneList"),
+  peopleStats: document.querySelector("#peopleStats"),
+  archivedPhoneList: document.querySelector("#archivedPhoneList"),
   financeCost: document.querySelector("#financeCost"),
   financeSold: document.querySelector("#financeSold"),
   financeProfit: document.querySelector("#financeProfit"),
+  monthFinanceTable: document.querySelector("#monthFinanceTable"),
   appFinanceTable: document.querySelector("#appFinanceTable"),
   phoneFinanceTable: document.querySelector("#phoneFinanceTable"),
   template: document.querySelector("#recordTemplate"),
@@ -108,6 +116,7 @@ function record(phone, platform, status, price, contactPlatform, nickname, date,
     contactPlatform,
     nickname,
     date,
+    actualCancelDate: "",
     note,
     updatedAt: new Date().toISOString(),
   };
@@ -146,6 +155,7 @@ function addAppOption() {
     form.elements.platform.value = appName;
     return;
   }
+  pushUndo();
   platforms.push(appName);
   data.platforms = platforms;
   persist();
@@ -163,6 +173,7 @@ function deleteAppOption() {
     ? `\u786e\u5b9a\u5220\u9664 APP\u300c${appName}\u300d\u5417\uff1f\u8fd9\u4f1a\u540c\u65f6\u5220\u9664 ${recordCount} \u6761\u8be5 APP \u7684\u8bb0\u5f55\u3002`
     : `\u786e\u5b9a\u5220\u9664 APP\u300c${appName}\u300d\u5417\uff1f`;
   if (!confirm(message)) return;
+  pushUndo();
   platforms = platforms.filter((item) => item !== appName);
   data.records = data.records.filter((item) => item.platform !== appName);
   data.platforms = platforms;
@@ -180,6 +191,7 @@ function bindEvents() {
   document.querySelector("#deleteAppBtn").addEventListener("click", deleteAppOption);
   document.querySelector("#githubSyncBtn").addEventListener("click", setupGitHubSync);
   document.querySelector("#resetDemoBtn").addEventListener("click", () => {
+    pushUndo();
     data = { ...cloneData(demoData), platforms: [...platforms] };
     persist();
     fillOptions();
@@ -188,12 +200,12 @@ function bindEvents() {
   });
   document.querySelector("#exportBtn").addEventListener("click", exportData);
   document.querySelector("#importFile").addEventListener("change", importData);
-  ["cardFee", "initialRecharge", "monthlyRent", "laborCost"].forEach((name) => {
+  ["cardFee", "initialRecharge", "monthlyRent", "personCost"].forEach((name) => {
     form.elements[name].addEventListener("input", renderFormCost);
   });
-  ["date", "cancelAfterDays"].forEach((name) => {
-    form.elements[name].addEventListener("input", renderFormCancelHint);
-  });
+  form.elements.date.addEventListener("input", renderReminderHints);
+  form.elements.loginCheckAfterDays.addEventListener("input", renderFormLoginCheckHint);
+  form.elements.cancelAfterDays.addEventListener("input", renderFormCancelHint);
   form.elements.phone.addEventListener("change", () => selectPhoneProfile(form.elements.phone.value));
   form.elements.phone.addEventListener("blur", () => selectPhoneProfile(form.elements.phone.value));
   els.searchInput.addEventListener("input", render);
@@ -202,6 +214,7 @@ function bindEvents() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => switchView(button.dataset.view));
   });
+  document.addEventListener("keydown", handleUndoShortcut);
 }
 
 function saveRecord(event) {
@@ -219,9 +232,9 @@ function saveRecord(event) {
       cardFee: moneyValue(values.cardFee),
       initialRecharge: moneyValue(values.initialRecharge),
       monthlyRent: moneyValue(values.monthlyRent),
-      laborCost: moneyValue(values.laborCost),
+      personName: values.personName.trim(),
+      personCost: moneyValue(values.personCost),
       carrier: values.carrier.trim(),
-      cardOwner: values.cardOwner.trim(),
       deviceNo: values.deviceNo.trim(),
       slotNo: values.slotNo.trim(),
     };
@@ -230,9 +243,9 @@ function saveRecord(event) {
     phone.cardFee = moneyField(values.cardFee, phone.cardFee);
     phone.initialRecharge = moneyField(values.initialRecharge, phone.initialRecharge);
     phone.monthlyRent = moneyField(values.monthlyRent, phone.monthlyRent);
-    phone.laborCost = moneyField(values.laborCost, phone.laborCost);
+    phone.personName = values.personName.trim() || phone.personName || "";
+    phone.personCost = moneyField(values.personCost, phone.personCost);
     phone.carrier = values.carrier.trim() || phone.carrier || "";
-    phone.cardOwner = values.cardOwner.trim() || phone.cardOwner || "";
     phone.deviceNo = values.deviceNo.trim() || phone.deviceNo || "";
     phone.slotNo = values.slotNo.trim() || phone.slotNo || "";
   }
@@ -248,12 +261,16 @@ function saveRecord(event) {
     contactPlatform: contacts[0]?.platform || "",
     nickname: contacts[0]?.nickname || "",
     date: values.date,
+    loginCheckAfterDays: wholeNumber(values.loginCheckAfterDays),
     cancelAfterDays: wholeNumber(values.cancelAfterDays),
+    actualCancelDate: values.actualCancelDate,
     note: values.note.trim(),
+    loginCheckLogs: editingId ? cloneData(data.records.find((item) => item.id === editingId)?.loginCheckLogs || []) : [],
     updatedAt: new Date().toISOString(),
   };
 
   const index = data.records.findIndex((item) => item.id === editingId);
+  pushUndo();
   if (index >= 0) {
     data.records[index] = nextRecord;
   } else {
@@ -273,17 +290,18 @@ function render() {
   renderMatrix(visible);
   renderRecords(visible);
   renderPhones(visible);
+  renderPeopleStats();
+  renderArchivedPhones(visible);
   renderFinance();
 }
 
 function renderStats() {
-  const sold = soldRecords();
-  els.phoneCount.textContent = data.phones.length;
-  els.recordCount.textContent = data.records.length;
-  els.soldTotal.textContent = currency(recordsTotal(sold));
+  els.phoneCount.textContent = data.phones.filter(isActivePhone).length;
+  els.soldTotal.textContent = loginCheckDueRecords().length;
   els.availableCount.textContent = data.records.filter((item) => normalizeStatus(item.status) === "cancelled_registerable").length;
-  els.blockedCount.textContent = data.records.filter((item) => normalizeStatus(item.status) === "cannot_register").length;
+  els.blockedCount.textContent = currency(monthSoldTotal());
   els.costTotal.textContent = currency(sum(data.phones.map(phoneTotalCost)));
+  els.loginCheckDueCount.textContent = loginCheckDueRecords().length;
   els.cancelDueCount.textContent = cancelDueRecords().length;
 }
 
@@ -295,8 +313,51 @@ function renderFinance() {
   els.financeSold.textContent = currency(soldTotal);
   els.financeProfit.textContent = currency(profit);
   els.financeProfit.classList.toggle("negative", profit < 0);
+  renderMonthFinance();
   renderAppFinance();
   renderPhoneFinance();
+}
+
+function renderMonthFinance() {
+  const monthMap = new Map();
+  const firstRecordMonthByPhone = new Map();
+
+  data.records.forEach((item) => {
+    const month = recordMonth(item);
+    if (!month) return;
+    if (!firstRecordMonthByPhone.has(item.phoneId) || month < firstRecordMonthByPhone.get(item.phoneId)) {
+      firstRecordMonthByPhone.set(item.phoneId, month);
+    }
+    const row = ensureMonthRow(monthMap, month);
+    row.records += 1;
+    if (isSoldRecord(item)) {
+      row.sold += 1;
+      row.income += Number(item.price || 0);
+    }
+  });
+
+  data.phones.forEach((phone) => {
+    const month = firstRecordMonthByPhone.get(phone.id);
+    if (!month) return;
+    ensureMonthRow(monthMap, month).cost += phoneTotalCost(phone);
+  });
+
+  const rows = [...monthMap.values()]
+    .map((row) => ({ ...row, profit: row.income - row.cost }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+
+  els.monthFinanceTable.innerHTML = financeTable(
+    ["\u6708\u4efd", "\u8bb0\u5f55", "\u5df2\u552e", "\u6210\u672c", "\u5df2\u552e\u91d1\u989d", "\u5229\u6da6"],
+    rows.map((row) => [
+      row.month,
+      row.records,
+      row.sold,
+      currency(row.cost),
+      currency(row.income),
+      { html: `<span class="${row.profit < 0 ? "negative" : ""}">${currency(row.profit)}</span>` },
+    ]),
+    6,
+  );
 }
 
 function renderAppFinance() {
@@ -335,14 +396,16 @@ function renderPhoneFinance() {
   }).filter((row) => row.records || row.cost || row.income);
 
   els.phoneFinanceTable.innerHTML = financeTable(
-    ["\u624b\u673a\u53f7", "\u6210\u672c", "\u5df2\u552e\u91d1\u989d", "\u5229\u6da6"],
+    ["\u624b\u673a\u53f7", "\u8bb0\u5f55", "\u5df2\u552e", "\u6210\u672c", "\u5df2\u552e\u91d1\u989d", "\u5229\u6da6"],
     rows.map((row) => [
-      `${row.phone.number}${row.phone.carrier ? ` · ${row.phone.carrier}` : ""}${row.phone.cardOwner ? ` · ${row.phone.cardOwner}` : ""}`,
+      `${row.phone.number}${row.phone.carrier ? ` · ${row.phone.carrier}` : ""}${row.phone.personName ? ` · ${row.phone.personName}` : ""}`,
+      row.records,
+      data.records.filter((item) => item.phoneId === row.phone.id && isSoldRecord(item)).length,
       currency(row.cost),
       currency(row.income),
       { html: `<span class="${row.profit < 0 ? "negative" : ""}">${currency(row.profit)}</span>` },
     ]),
-    4,
+    6,
   );
 }
 
@@ -353,6 +416,34 @@ function financeTable(headers, rows, colspan) {
     if (typeof item === "object" && item.html) return `<td>${item.html}</td>`;
     return `<td>${escapeHtml(item)}</td>`;
   }).join("")}</tr>`).join("");
+}
+
+function ensureMonthRow(map, month) {
+  if (!map.has(month)) {
+    map.set(month, {
+      month,
+      records: 0,
+      sold: 0,
+      cost: 0,
+      income: 0,
+    });
+  }
+  return map.get(month);
+}
+
+function recordMonth(item) {
+  if (item?.date) return String(item.date).slice(0, 7);
+  if (item?.updatedAt) return String(item.updatedAt).slice(0, 7);
+  return "";
+}
+
+function currentMonth() {
+  return formatDate(startOfToday()).slice(0, 7);
+}
+
+function monthSoldTotal() {
+  const month = currentMonth();
+  return recordsTotal(data.records.filter((item) => isSoldRecord(item) && recordMonth(item) === month));
 }
 
 function renderPhoneOptions() {
@@ -380,28 +471,62 @@ function renderMatrix(records) {
   });
   const header = `<tr><th>\u624b\u673a\u53f7</th>${platforms.map((name) => `<th>${escapeHtml(name)}</th>`).join("")}</tr>`;
   const rows = data.phones
-    .filter((phone) => phoneMatches(phone, records))
+    .filter((phone) => isActivePhone(phone) && phoneMatches(phone, records))
     .map((phone) => {
       const cells = platforms.map((platform) => {
         const items = recordsByPhonePlatform.get(`${phone.id}-${platform}`) || [];
         if (!items.length) {
-          return `<td><div class="cell empty" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+</div></td>`;
+          return `<td><div class="cell empty" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}"><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button><span>+</span></div></td>`;
         }
         const entries = items.map((item) => `<div class="cell-entry ${statusTone(item.status)}" data-record="${item.id}">
+            <button class="entry-copy" type="button" data-record="${item.id}" title="\u590d\u5236\u8fd9\u6761\u8bb0\u5f55">\u590d\u5236</button>
+            ${loginCheckNeedsAction(item) ? `<button class="entry-login-check" type="button" data-record="${item.id}" title="\u586b\u5199\u767b\u5f55\u540e\u60c5\u51b5">\u53ef\u767b\u5f55</button>` : ""}
             <strong>${escapeHtml(statusLabel(item.status))}${item.price ? ` · ${currency(item.price)}` : ""}</strong>
             <span>${escapeHtml([contactText(item), item.date].filter(Boolean).join(" / "))}</span>
+            <span>${escapeHtml(loginCheckText(item))}</span>
             <span>${escapeHtml(cancelText(item))}</span>
+            <span>${escapeHtml(actualCancelText(item))}</span>
             <span>${escapeHtml(item.note || "")}</span>
           </div>`).join("");
-        return `<td><div class="cell filled">${entries}<button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button></div></td>`;
+        return `<td><div class="cell filled">${entries}<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div></div></td>`;
       });
-      return `<tr><td>${escapeHtml(phone.number)}<br><span>${escapeHtml(phoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(phoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
     })
     .join("");
 
   els.matrixTable.innerHTML = header + (rows || `<tr><td colspan="${platforms.length + 1}" class="empty-state">\u6ca1\u6709\u5339\u914d\u8bb0\u5f55</td></tr>`);
   els.matrixTable.querySelectorAll("[data-record]").forEach((cell) => {
     cell.addEventListener("click", () => editRecord(cell.dataset.record));
+  });
+  els.matrixTable.querySelectorAll(".entry-copy").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      copyRecordTemplate(button.dataset.record);
+    });
+  });
+  els.matrixTable.querySelectorAll(".entry-login-check").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      addLoginCheckLog(button.dataset.record);
+    });
+  });
+  els.matrixTable.querySelectorAll(".cell-paste").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      pasteRecordTemplate(button.dataset.phone, button.dataset.platform);
+    });
+  });
+  els.matrixTable.querySelectorAll(".phone-copy").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      copyPhoneNumber(button.dataset.phone);
+    });
+  });
+  els.matrixTable.querySelectorAll(".phone-archive").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      archivePhone(button.dataset.phoneId, button.dataset.status);
+    });
   });
   els.matrixTable.querySelectorAll(".cell.empty").forEach((cell) => {
     cell.addEventListener("click", () => {
@@ -440,13 +565,15 @@ function renderRecords(records) {
         item.price ? currency(item.price) : "",
         contactText(item),
         item.date,
+        loginCheckText(item),
         cancelText(item),
+        actualCancelText(item),
       ].filter(Boolean).join(" / ");
       node.querySelector(".record-note").textContent = item.note || "\u65e0\u5907\u6ce8";
       const badge = node.querySelector(".badge");
       badge.textContent = statusLabel(item.status);
       badge.classList.add(statusTone(item.status));
-      if (cancelState(item).isDue) node.querySelector(".record-card").classList.add("cancel-due");
+      if (loginCheckNeedsAction(item) || cancelState(item).isDue) node.querySelector(".record-card").classList.add("cancel-due");
       node.querySelector(".edit-record").addEventListener("click", () => editRecord(item.id));
       node.querySelector(".delete-record").addEventListener("click", () => deleteRecord(item.id));
       els.recordList.appendChild(node);
@@ -456,21 +583,30 @@ function renderRecords(records) {
 function renderPhones(records) {
   const counts = new Map();
   records.forEach((item) => counts.set(item.phoneId, (counts.get(item.phoneId) || 0) + 1));
-  const phones = data.phones.filter((phone) => phoneMatches(phone, records));
-  els.phoneList.innerHTML = phones.length
-    ? phones.map((phone) => `<article class="phone-card">
-        <strong>${escapeHtml(phone.number)} ${phone.carrier ? `· ${escapeHtml(phone.carrier)}` : ""}</strong>
-        <p>${escapeHtml(phone.cardOwner ? `\u5f00\u5361\u4eba\uff1a${phone.cardOwner}` : "\u672a\u586b\u5199\u5f00\u5361\u4eba")}</p>
-        <p>${escapeHtml(costBreakdown(phone))}</p>
-        <p>\u603b\u6210\u672c\uff1a${currency(phoneTotalCost(phone))}</p>
-        <p>${escapeHtml(deviceSummary(phone))}</p>
-        <p>\u5f53\u524d\u7b5b\u9009\u4e0b ${counts.get(phone.id) || 0} \u6761\u5e73\u53f0\u8bb0\u5f55</p>
-        <div class="card-actions">
-          <button class="text-button select-phone" type="button" data-phone-id="${escapeAttr(phone.id)}">\u9009\u62e9</button>
-          <button class="danger-button delete-phone" type="button" data-phone-id="${escapeAttr(phone.id)}">\u5220\u9664\u624b\u673a\u53f7</button>
-        </div>
-      </article>`).join("")
-    : `<p class="empty-state">\u6ca1\u6709\u5339\u914d\u624b\u673a\u53f7</p>`;
+  const phones = data.phones.filter((phone) => isActivePhone(phone) && phoneMatches(phone, records));
+  if (!phones.length) {
+    selectedPhoneLookupId = "";
+    els.phoneList.innerHTML = `<p class="empty-state">\u6ca1\u6709\u5339\u914d\u624b\u673a\u53f7</p>`;
+    return;
+  }
+
+  if (!phones.some((phone) => phone.id === selectedPhoneLookupId)) selectedPhoneLookupId = phones[0].id;
+  const selected = phoneById(selectedPhoneLookupId) || phones[0];
+  const options = phones
+    .map((phone) => `<option value="${escapeAttr(phone.id)}" ${phone.id === selected.id ? "selected" : ""}>${escapeHtml(phoneLookupLabel(phone))}</option>`)
+    .join("");
+  els.phoneList.innerHTML = `<section class="phone-lookup">
+      <label>
+        \u67e5\u8be2\u624b\u673a\u53f7
+        <select id="phoneLookupSelect">${options}</select>
+      </label>
+      ${phoneLookupDetail(selected, counts.get(selected.id) || 0)}
+    </section>`;
+
+  document.querySelector("#phoneLookupSelect").addEventListener("change", (event) => {
+    selectedPhoneLookupId = event.target.value;
+    renderPhones(records);
+  });
 
   els.phoneList.querySelectorAll(".select-phone").forEach((button) => {
     button.addEventListener("click", () => {
@@ -483,13 +619,98 @@ function renderPhones(records) {
   });
 }
 
+function phoneLookupDetail(phone, recordCount) {
+  return `<article class="phone-card phone-lookup-card">
+      <div class="phone-lookup-title">
+        <strong>${escapeHtml(phone.number)}</strong>
+        <span>${escapeHtml(phone.carrier || "\u672a\u586b\u5199\u8fd0\u8425\u5546")}</span>
+      </div>
+      <div class="device-grid">
+        <article>
+          <span>\u8bbe\u5907\u7f16\u53f7</span>
+          <strong>${escapeHtml(phone.deviceNo || "\u672a\u586b\u5199")}</strong>
+        </article>
+        <article>
+          <span>\u5361\u69fd\u7f16\u53f7</span>
+          <strong>${escapeHtml(phone.slotNo || "\u672a\u586b\u5199")}</strong>
+        </article>
+      </div>
+      <dl class="phone-detail-list">
+        <div><dt>\u59d3\u540d</dt><dd>${escapeHtml(phone.personName || "\u672a\u586b\u5199")}</dd></div>
+        <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
+        <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
+        <div><dt>\u603b\u6210\u672c</dt><dd>${currency(phoneTotalCost(phone))}</dd></div>
+        <div><dt>\u5e73\u53f0\u8bb0\u5f55</dt><dd>\u5f53\u524d\u7b5b\u9009\u4e0b ${recordCount} \u6761</dd></div>
+      </dl>
+      <div class="card-actions">
+        <button class="text-button select-phone" type="button" data-phone-id="${escapeAttr(phone.id)}">\u586b\u5165\u5feb\u901f\u5f55\u5165</button>
+        <button class="danger-button delete-phone" type="button" data-phone-id="${escapeAttr(phone.id)}">\u5220\u9664\u624b\u673a\u53f7</button>
+      </div>
+    </article>`;
+}
+
+function phoneLookupLabel(phone) {
+  return [phone.number, phone.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "", phone.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "", phone.carrier].filter(Boolean).join(" / ");
+}
+
+function renderPeopleStats() {
+  const people = new Map();
+  data.phones.forEach((phone) => {
+    const name = phone.personName || "\u672a\u586b\u5199";
+    const carrier = phone.carrier || "\u672a\u586b\u5199\u8fd0\u8425\u5546";
+    if (!people.has(name)) people.set(name, new Map());
+    const carrierMap = people.get(name);
+    if (!carrierMap.has(carrier)) carrierMap.set(carrier, []);
+    carrierMap.get(carrier).push(phone);
+  });
+
+  els.peopleStats.innerHTML = [...people.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
+    .map(([name, carrierMap]) => {
+      const phones = [...carrierMap.values()].flat();
+      const personCost = sum(phones.map((phone) => phone.personCost));
+      const carrierBlocks = [...carrierMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
+        .map(([carrier, carrierPhones]) => `<div class="person-carrier">
+          <strong>${escapeHtml(carrier)} · ${carrierPhones.length} \u5f20\u5361</strong>
+          <p>${escapeHtml(carrierPhones.map((phone) => `${phone.number}${phone.deviceNo ? ` / \u8bbe\u5907${phone.deviceNo}` : ""}${phone.slotNo ? ` / \u5361\u69fd${phone.slotNo}` : ""}`).join("；"))}</p>
+        </div>`).join("");
+      return `<article class="person-card">
+        <h2>${escapeHtml(name)} · ${phones.length} \u5f20\u5361 · \u4eba\u5458\u6210\u672c ${currency(personCost)}</h2>
+        ${carrierBlocks}
+      </article>`;
+    }).join("") || `<p class="empty-state">\u6682\u65e0\u59d3\u540d\u7edf\u8ba1</p>`;
+}
+
+function renderArchivedPhones(records) {
+  const counts = new Map();
+  records.forEach((item) => counts.set(item.phoneId, (counts.get(item.phoneId) || 0) + 1));
+  const phones = data.phones.filter((phone) => !isActivePhone(phone) && phoneMatches(phone, records));
+  els.archivedPhoneList.innerHTML = phones.length
+    ? phones.map((phone) => `<article class="phone-card archived">
+        <strong>${escapeHtml(phone.number)} · ${escapeHtml(phoneArchiveLabel(phone))}</strong>
+        <p>${escapeHtml(phone.blockReason ? `\u5c01\u7981\u539f\u56e0\uff1a${phone.blockReason}` : "\u65e0\u5c01\u7981\u539f\u56e0")}</p>
+        <p>${escapeHtml(phone.archivedAt ? `\u5904\u7406\u65f6\u95f4\uff1a${phone.archivedAt.slice(0, 10)}` : "")}</p>
+        <p>${escapeHtml(phoneSummary(phone))}</p>
+        <p>\u5386\u53f2\u8bb0\u5f55\uff1a${counts.get(phone.id) || 0} \u6761\uff0c\u8d22\u52a1\u7ee7\u7eed\u7edf\u8ba1</p>
+        <div class="card-actions">
+          <button class="text-button restore-phone" type="button" data-phone-id="${escapeAttr(phone.id)}">\u6062\u590d\u5230\u77e9\u9635</button>
+        </div>
+      </article>`).join("")
+    : `<p class="empty-state">\u6682\u65e0\u6ce8\u9500\u6216\u5c01\u7981\u624b\u673a\u53f7</p>`;
+
+  els.archivedPhoneList.querySelectorAll(".restore-phone").forEach((button) => {
+    button.addEventListener("click", () => restorePhone(button.dataset.phoneId));
+  });
+}
+
 function filteredRecords() {
   const text = els.searchInput.value.trim().toLowerCase();
   const platform = els.platformFilter.value;
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
-    const haystack = [phone?.number, phoneSummary(phone), phone?.carrier, phone?.cardOwner, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.note, statusLabel(item.status)]
+    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), item.actualCancelDate, item.note, statusLabel(item.status)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -502,7 +723,7 @@ function filteredRecords() {
 function phoneMatches(phone, records) {
   const text = els.searchInput.value.trim().toLowerCase();
   if (!text) return true;
-  return [phone.number, phoneSummary(phone), phone.carrier, phone.cardOwner, phone.deviceNo, phone.slotNo].filter(Boolean).join(" ").toLowerCase().includes(text) ||
+  return [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo].filter(Boolean).join(" ").toLowerCase().includes(text) ||
     records.some((item) => item.phoneId === phone.id);
 }
 
@@ -517,11 +738,13 @@ function editRecord(id) {
   form.elements.price.value = item.price || "";
   setContactRows(contactEntries(item));
   form.elements.date.value = item.date || "";
+  form.elements.loginCheckAfterDays.value = item.loginCheckAfterDays || "";
   form.elements.cancelAfterDays.value = item.cancelAfterDays || "";
+  form.elements.actualCancelDate.value = item.actualCancelDate || "";
   form.elements.note.value = item.note || "";
   form.querySelector(".primary-button").textContent = "\u66f4\u65b0\u8bb0\u5f55";
   renderFormCost();
-  renderFormCancelHint();
+  renderReminderHints();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -537,9 +760,9 @@ function fillPhoneFields(phone) {
   form.elements.cardFee.value = displayNumber(phone.cardFee);
   form.elements.initialRecharge.value = displayNumber(phone.initialRecharge);
   form.elements.monthlyRent.value = displayNumber(phone.monthlyRent);
-  form.elements.laborCost.value = displayNumber(phone.laborCost);
+  form.elements.personName.value = phone.personName || "";
+  form.elements.personCost.value = displayNumber(phone.personCost);
   form.elements.carrier.value = phone.carrier || "";
-  form.elements.cardOwner.value = phone.cardOwner || "";
   form.elements.deviceNo.value = phone.deviceNo || "";
   form.elements.slotNo.value = phone.slotNo || "";
   renderFormCost();
@@ -547,9 +770,89 @@ function fillPhoneFields(phone) {
 }
 
 function deleteRecord(id) {
+  pushUndo();
   data.records = data.records.filter((item) => item.id !== id);
   persist();
   render();
+}
+
+function copyRecordTemplate(id) {
+  const item = data.records.find((recordItem) => recordItem.id === id);
+  if (!item) return;
+  copiedRecord = {
+    status: normalizeStatus(item.status),
+    price: item.price,
+    contacts: cloneData(contactEntries(item)),
+    contactPlatforms: cloneData(contactEntries(item).map((contact) => contact.platform)),
+    contactPlatform: contactEntries(item)[0]?.platform || "",
+    nickname: contactEntries(item)[0]?.nickname || "",
+    date: item.date,
+    loginCheckAfterDays: item.loginCheckAfterDays,
+    cancelAfterDays: item.cancelAfterDays,
+    actualCancelDate: item.actualCancelDate,
+    note: item.note,
+    loginCheckLogs: cloneData(item.loginCheckLogs || []),
+  };
+  toast("\u5df2\u590d\u5236\u8bb0\u5f55\uff0c\u53ef\u7c98\u8d34\u5230\u5176\u4ed6\u5355\u5143\u683c");
+}
+
+function addLoginCheckLog(id) {
+  const item = data.records.find((recordItem) => recordItem.id === id);
+  if (!item) return;
+  const result = prompt("\u586b\u5199\u767b\u5f55\u540e\u60c5\u51b5");
+  if (result === null) return;
+  const text = result.trim();
+  if (!text) {
+    toast("\u672a\u586b\u5199\u5185\u5bb9");
+    return;
+  }
+  const log = `${formatDate(startOfToday())} \u767b\u5f55\u67e5\u770b\uff1a${text}`;
+  pushUndo();
+  item.loginCheckLogs = [...(Array.isArray(item.loginCheckLogs) ? item.loginCheckLogs : []), log];
+  item.note = [item.note, log].filter(Boolean).join("\n");
+  item.updatedAt = new Date().toISOString();
+  persist();
+  render();
+  toast("\u5df2\u8bb0\u5f55\u767b\u5f55\u540e\u60c5\u51b5");
+}
+
+function pasteRecordTemplate(phoneNumber, platform) {
+  if (!copiedRecord) {
+    toast("\u8bf7\u5148\u590d\u5236\u4e00\u6761\u5355\u5143\u683c\u8bb0\u5f55");
+    return;
+  }
+  const phone = phoneByNumber(phoneNumber);
+  if (!phone) return;
+  pushUndo();
+  data.records.push({
+    ...cloneData(copiedRecord),
+    id: makeId(),
+    phoneId: phone.id,
+    platform,
+    updatedAt: new Date().toISOString(),
+  });
+  persist();
+  render();
+  toast("\u5df2\u7c98\u8d34\u5230\u76ee\u6807\u5355\u5143\u683c");
+}
+
+async function copyPhoneNumber(number) {
+  try {
+    await navigator.clipboard.writeText(number);
+    toast("\u624b\u673a\u53f7\u5df2\u590d\u5236");
+  } catch {
+    prompt("\u590d\u5236\u624b\u673a\u53f7", number);
+  }
+}
+
+function toast(message) {
+  const existing = document.querySelector(".toast");
+  if (existing) existing.remove();
+  const node = document.createElement("div");
+  node.className = "toast";
+  node.textContent = message;
+  document.body.appendChild(node);
+  setTimeout(() => node.remove(), 1800);
 }
 
 function deletePhone(id) {
@@ -558,6 +861,7 @@ function deletePhone(id) {
   const recordCount = data.records.filter((item) => item.phoneId === id).length;
   const message = `\u786e\u5b9a\u5220\u9664\u624b\u673a\u53f7 ${phone.number} \u5417\uff1f\u8fd9\u4f1a\u540c\u65f6\u5220\u9664 ${recordCount} \u6761\u5e73\u53f0\u8bb0\u5f55\u3002`;
   if (!confirm(message)) return;
+  pushUndo();
   data.phones = data.phones.filter((item) => item.id !== id);
   data.records = data.records.filter((item) => item.phoneId !== id);
   if (form.elements.phone.value === phone.number) clearForm();
@@ -565,14 +869,96 @@ function deletePhone(id) {
   render();
 }
 
+function archivePhone(id, status) {
+  const phone = phoneById(id);
+  if (!phone) return;
+  let blockReason = "";
+  if (status === "blocked") {
+    blockReason = prompt("\u586b\u5199\u5c01\u7981\u539f\u56e0", phone.blockReason || "") || "";
+    if (!blockReason.trim()) return;
+  } else if (!confirm(`\u786e\u5b9a\u5c06\u624b\u673a\u53f7 ${phone.number} \u6807\u8bb0\u4e3a\u5df2\u6ce8\u9500\uff1f`)) {
+    return;
+  }
+  pushUndo();
+  phone.phoneStatus = status;
+  phone.blockReason = status === "blocked" ? blockReason.trim() : "";
+  phone.archivedAt = new Date().toISOString();
+  persist();
+  render();
+  toast(status === "blocked" ? "\u5df2\u79fb\u5165\u6ce8\u9500\u624b\u673a\u53f7\uff08\u5c01\u7981\uff09" : "\u5df2\u79fb\u5165\u6ce8\u9500\u624b\u673a\u53f7");
+}
+
+function restorePhone(id) {
+  const phone = phoneById(id);
+  if (!phone) return;
+  pushUndo();
+  phone.phoneStatus = "active";
+  phone.blockReason = "";
+  phone.archivedAt = "";
+  persist();
+  render();
+  toast("\u5df2\u6062\u590d\u5230\u77e9\u9635");
+}
+
+function isActivePhone(phone) {
+  return !phone?.phoneStatus || phone.phoneStatus === "active";
+}
+
+function phoneArchiveLabel(phone) {
+  if (phone?.phoneStatus === "blocked") return "\u5df2\u5c01\u7981";
+  if (phone?.phoneStatus === "cancelled") return "\u5df2\u6ce8\u9500";
+  return "\u6b63\u5e38";
+}
+
 function clearForm() {
   editingId = null;
   form.reset();
   setContactRows([]);
   form.elements.date.valueAsDate = new Date();
+  form.elements.actualCancelDate.value = "";
   form.querySelector(".primary-button").textContent = "\u4fdd\u5b58\u8bb0\u5f55";
   renderFormCost();
-  renderFormCancelHint();
+  renderReminderHints();
+}
+
+function pushUndo() {
+  undoStack.push({
+    data: cloneData(data),
+    platforms: cloneData(platforms),
+    editingId,
+  });
+  if (undoStack.length > 50) undoStack.shift();
+}
+
+function undoLastAction() {
+  const snapshot = undoStack.pop();
+  if (!snapshot) {
+    toast("\u6ca1\u6709\u53ef\u64a4\u9500\u7684\u64cd\u4f5c");
+    return;
+  }
+  data = normalizeData(snapshot.data);
+  platforms = cloneData(snapshot.platforms);
+  data.platforms = platforms;
+  editingId = snapshot.editingId;
+  fillOptions();
+  persist();
+  clearForm();
+  render();
+  toast("\u5df2\u64a4\u9500\u4e0a\u4e00\u6b65");
+}
+
+function handleUndoShortcut(event) {
+  const key = event.key.toLowerCase();
+  if (!(event.ctrlKey || event.metaKey) || key !== "z" || event.shiftKey || event.altKey) return;
+  if (isTypingTarget(event.target)) return;
+  event.preventDefault();
+  undoLastAction();
+}
+
+function isTypingTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
 }
 
 function switchView(view) {
@@ -620,6 +1006,7 @@ async function setupGitHubSync() {
   const remote = await loadGitHubData();
   if (remote) {
     if (confirm("\u5df2\u627e\u5230 GitHub \u4e0a\u7684\u6570\u636e\uff0c\u662f\u5426\u62c9\u53d6\u5e76\u8986\u76d6\u5f53\u524d\u9875\u9762\u6570\u636e\uff1f")) {
+      pushUndo();
       data = remote;
       platforms = data.platforms || [...defaultPlatforms];
       fillOptions();
@@ -791,6 +1178,7 @@ function importData(event) {
     try {
       const next = JSON.parse(reader.result);
       if (!Array.isArray(next.phones) || !Array.isArray(next.records)) throw new Error("bad data");
+      pushUndo();
       data = normalizeData(next);
       platforms = data.platforms;
       fillOptions();
@@ -874,25 +1262,25 @@ function phoneTotalCost(phone) {
     phone?.cardFee,
     phone?.initialRecharge,
     phone?.monthlyRent,
-    phone?.laborCost,
+    phone?.personCost,
   ]);
 }
 
 function costBreakdown(phone) {
   if (!phone) return "";
-  if (phone.sim && !phone.cardFee && !phone.initialRecharge && !phone.monthlyRent && !phone.laborCost) {
+  if (phone.sim && !phone.cardFee && !phone.initialRecharge && !phone.monthlyRent) {
     return phone.sim;
   }
   return [
     `\u5361\u8d39 ${currency(phone.cardFee)}`,
     `\u9996\u5145 ${currency(phone.initialRecharge)}`,
     `\u6708\u79df ${currency(phone.monthlyRent)}`,
-    `\u4eba\u5de5 ${currency(phone.laborCost)}`,
+    `\u4eba\u5458\u6210\u672c ${currency(phone.personCost)}`,
   ].join(" / ");
 }
 
 function phoneSummary(phone) {
-  return [phone?.carrier, phone?.cardOwner ? `\u5f00\u5361\u4eba ${phone.cardOwner}` : "", deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" · ");
+  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" · ");
 }
 
 function contactText(item) {
@@ -948,8 +1336,27 @@ function contactNicknameField(platform) {
   return "contactNickname_wechat";
 }
 
+function loginCheckDueRecords() {
+  return data.records.filter(loginCheckNeedsAction);
+}
+
+function loginCheckNeedsAction(item) {
+  return loginCheckState(item).isDue && !hasLoginCheckLog(item);
+}
+
+function hasLoginCheckLog(item) {
+  return Array.isArray(item?.loginCheckLogs) && item.loginCheckLogs.length > 0;
+}
+
 function cancelDueRecords() {
   return data.records.filter((item) => cancelState(item).isDue);
+}
+
+function loginCheckText(item) {
+  const state = loginCheckState(item);
+  if (!state.dueDate) return "";
+  if (state.isDue) return `\u53ef\u767b\u5f55\u67e5\u770b\uff1a${state.dueDate}`;
+  return `\u5f85\u767b\u5f55\u67e5\u770b\uff1a${state.dueDate}`;
 }
 
 function cancelText(item) {
@@ -957,6 +1364,21 @@ function cancelText(item) {
   if (!state.dueDate) return "";
   if (state.isDue) return `\u53ef\u6ce8\u9500\uff1a${state.dueDate}`;
   return `\u5f85\u6ce8\u9500\uff1a${state.dueDate}`;
+}
+
+function actualCancelText(item) {
+  return item?.actualCancelDate ? `\u5b9e\u9645\u6ce8\u9500\uff1a${item.actualCancelDate}` : "";
+}
+
+function loginCheckState(item) {
+  const days = wholeNumber(item?.loginCheckAfterDays);
+  if (!item?.date || !days) return { dueDate: "", isDue: false };
+  const due = addDays(item.date, days);
+  const dueDate = formatDate(due);
+  return {
+    dueDate,
+    isDue: due.getTime() <= startOfToday().getTime(),
+  };
 }
 
 function cancelState(item) {
@@ -991,6 +1413,26 @@ function formatDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function renderReminderHints() {
+  renderFormLoginCheckHint();
+  renderFormCancelHint();
+}
+
+function renderFormLoginCheckHint() {
+  const date = form.elements.date.value;
+  const days = wholeNumber(form.elements.loginCheckAfterDays.value);
+  if (!date || !days) {
+    els.formLoginCheckHint.textContent = "\u672a\u8bbe\u7f6e\u767b\u5f55\u67e5\u770b\u63d0\u9192";
+    els.formLoginCheckHint.classList.remove("due");
+    return;
+  }
+  const state = loginCheckState({ date, loginCheckAfterDays: days });
+  els.formLoginCheckHint.textContent = state.isDue
+    ? `\u5df2\u5230\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`
+    : `\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`;
+  els.formLoginCheckHint.classList.toggle("due", state.isDue);
 }
 
 function renderFormCancelHint() {
@@ -1032,7 +1474,7 @@ function deviceSummary(phone) {
 }
 
 function renderFormCost() {
-  const total = ["cardFee", "initialRecharge", "monthlyRent", "laborCost"]
+  const total = ["cardFee", "initialRecharge", "monthlyRent", "personCost"]
     .map((name) => moneyValue(form.elements[name].value))
     .reduce((next, item) => next + item, 0);
   els.formTotalCost.textContent = currency(total);
@@ -1051,11 +1493,14 @@ function normalizeData(next) {
       cardFee: moneyValue(phone.cardFee),
       initialRecharge: moneyValue(phone.initialRecharge),
       monthlyRent: moneyValue(phone.monthlyRent),
-      laborCost: moneyValue(phone.laborCost),
+      personName: phone.personName || phone.cardOwner || "",
+      personCost: moneyValue(phone.personCost ?? phone.laborCost),
       carrier: phone.carrier || phone.tag || "",
-      cardOwner: phone.cardOwner || "",
       deviceNo: phone.deviceNo || "",
       slotNo: phone.slotNo || "",
+      phoneStatus: phone.phoneStatus || "active",
+      blockReason: phone.blockReason || "",
+      archivedAt: phone.archivedAt || "",
     })),
     records: next.records.map((item) => ({
       ...item,
@@ -1070,7 +1515,10 @@ function normalizeData(next) {
             : [],
       contactPlatform: item.contactPlatform || (item.buyer ? inferContactPlatform(item.buyer) : ""),
       nickname: item.nickname || stripLegacyContact(item.buyer),
+      loginCheckLogs: Array.isArray(item.loginCheckLogs) ? item.loginCheckLogs : [],
+      loginCheckAfterDays: wholeNumber(item.loginCheckAfterDays),
       cancelAfterDays: wholeNumber(item.cancelAfterDays),
+      actualCancelDate: item.actualCancelDate || "",
     })),
   };
 }

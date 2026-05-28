@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>&#25163;&#26426;&#21495;&#21806;&#21334;&#35760;&#24405;</title>
+    <title>&#25163;&#26426;&#31649;&#29702;&#31995;&#32479;</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -11,7 +11,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">&#25163;&#26426;&#27880;&#20876; app &#31649;&#29702;</p>
-          <h1>&#25163;&#26426;&#21495;&#21806;&#21334;&#35760;&#24405;</h1>
+          <h1>&#25163;&#26426;&#31649;&#29702;&#31995;&#32479;</h1>
         </div>
         <div class="actions">
           <button class="icon-button" id="exportBtn" title="Export JSON" aria-label="Export JSON">↓</button>
@@ -26,28 +26,28 @@
 
       <section class="stats" aria-label="stats">
         <article>
-          <span>&#25163;&#26426;&#21495;</span>
+          <span>&#25163;&#26426;&#21495;&#20010;&#25968;</span>
           <strong id="phoneCount">0</strong>
         </article>
         <article>
-          <span>APP&#35760;&#24405;</span>
-          <strong id="recordCount">0</strong>
-        </article>
-        <article>
-          <span>&#24050;&#21806;&#37329;&#39069;</span>
+          <span>&#21487;&#30331;&#24405;&#20010;&#25968;</span>
           <strong id="soldTotal">¥0</strong>
         </article>
         <article>
-          <span>&#21487;&#27880;&#20876;</span>
+          <span>&#21487;&#27880;&#20876;&#20010;&#25968;</span>
           <strong id="availableCount">0</strong>
         </article>
         <article>
-          <span>&#26080;&#27861;&#27880;&#20876;</span>
+          <span>&#26376;&#38144;&#21806;&#39069;</span>
           <strong id="blockedCount">0</strong>
         </article>
         <article>
           <span>&#24635;&#25104;&#26412;</span>
           <strong id="costTotal">¥0</strong>
+        </article>
+        <article>
+          <span>&#21487;&#30331;&#24405;&#25552;&#37266;</span>
+          <strong id="loginCheckDueCount">0</strong>
         </article>
         <article>
           <span>&#21487;&#27880;&#38144;&#25552;&#37266;</span>
@@ -84,8 +84,14 @@
                 <input name="monthlyRent" inputmode="decimal" placeholder="0" />
               </label>
               <label>
-                &#20154;&#24037;
-                <input name="laborCost" inputmode="decimal" placeholder="0" />
+                &#22995;&#21517;
+                <input name="personName" placeholder="&#22995;&#21517;" />
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                &#20154;&#21592;&#25104;&#26412;
+                <input name="personCost" inputmode="decimal" placeholder="0" />
               </label>
             </div>
             <div class="cost-line">
@@ -96,12 +102,6 @@
               <label>
                 &#36816;&#33829;&#21830;
                 <input name="carrier" placeholder="&#32852;&#36890; / &#31227;&#21160; / &#30005;&#20449;" />
-              </label>
-            </div>
-            <div class="split">
-              <label>
-                &#24320;&#21345;&#20154;
-                <input name="cardOwner" placeholder="&#24320;&#21345;&#20154;" />
               </label>
             </div>
             <div class="split">
@@ -156,11 +156,22 @@
                 <input name="date" type="date" />
               </label>
               <label>
+                &#20960;&#22825;&#21518;&#21487;&#30331;&#24405;&#26597;&#30475;
+                <input name="loginCheckAfterDays" inputmode="numeric" placeholder="&#20363;&#22914; 3" />
+              </label>
+            </div>
+            <div class="reminder-line" id="formLoginCheckHint">&#26410;&#35774;&#32622;&#30331;&#24405;&#26597;&#30475;&#25552;&#37266;</div>
+            <div class="split">
+              <label>
                 &#20960;&#22825;&#21518;&#21487;&#27880;&#38144;
                 <input name="cancelAfterDays" inputmode="numeric" placeholder="&#20363;&#22914; 3" />
               </label>
             </div>
             <div class="reminder-line" id="formCancelHint">&#26410;&#35774;&#32622;&#27880;&#38144;&#25552;&#37266;</div>
+            <label>
+              &#23454;&#38469;&#27880;&#38144;&#26085;&#26399;
+              <input name="actualCancelDate" type="date" />
+            </label>
             <label>
               &#22791;&#27880;
               <textarea name="note" rows="3" placeholder="&#23454;&#21517;&#12289;&#27880;&#38144;&#12289;&#36339;&#39564;&#35777;&#12289;&#32570;&#24037;&#20316;&#23460;&#31561;"></textarea>
@@ -183,6 +194,8 @@
             <button class="tab active" data-view="matrix" type="button">&#30697;&#38453;</button>
             <button class="tab" data-view="records" type="button">&#26126;&#32454;</button>
             <button class="tab" data-view="phones" type="button">&#25163;&#26426;&#21495;</button>
+            <button class="tab" data-view="people" type="button">&#22995;&#21517;&#32479;&#35745;</button>
+            <button class="tab" data-view="archivedPhones" type="button">&#27880;&#38144;&#25163;&#26426;&#21495;</button>
             <button class="tab" data-view="finance" type="button">&#36130;&#21153;</button>
           </div>
 
@@ -198,6 +211,14 @@
 
           <div id="phonesView" class="view">
             <div id="phoneList" class="phone-list"></div>
+          </div>
+
+          <div id="peopleView" class="view">
+            <div id="peopleStats" class="people-list"></div>
+          </div>
+
+          <div id="archivedPhonesView" class="view">
+            <div id="archivedPhoneList" class="phone-list"></div>
           </div>
 
           <div id="financeView" class="view">
@@ -217,15 +238,21 @@
             </section>
             <div class="finance-grid">
               <section>
-                <h2>APP&#36130;&#21153;</h2>
+                <h2>&#26376;&#24230;&#36130;&#21153;</h2>
                 <div class="table-wrap finance-table-wrap">
-                  <table id="appFinanceTable"></table>
+                  <table id="monthFinanceTable"></table>
                 </div>
               </section>
               <section>
                 <h2>&#25163;&#26426;&#21495;&#36130;&#21153;</h2>
                 <div class="table-wrap finance-table-wrap">
                   <table id="phoneFinanceTable"></table>
+                </div>
+              </section>
+              <section>
+                <h2>APP&#36130;&#21153;</h2>
+                <div class="table-wrap finance-table-wrap">
+                  <table id="appFinanceTable"></table>
                 </div>
               </section>
             </div>

@@ -128,9 +128,13 @@ h2 {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.stats article:nth-child(n + 5) {
+  display: none;
 }
 
 .stats article,
@@ -165,7 +169,7 @@ h2 {
 }
 
 .panel {
-  width: 340px;
+  width: 280px;
   padding: 16px;
   position: sticky;
   top: 16px;
@@ -292,6 +296,10 @@ textarea {
 
 .split {
   gap: 10px;
+}
+
+.panel .split {
+  gap: 8px;
 }
 
 .split > label {
@@ -442,7 +450,7 @@ td:first-child {
   position: sticky;
   left: 0;
   z-index: 3;
-  min-width: 150px;
+  min-width: 140px;
 }
 
 td:first-child {
@@ -468,16 +476,31 @@ td:first-child {
 .cell.empty {
   color: #a8b2bd;
   background: #f8fafc;
+  display: grid;
+  gap: 6px;
+  place-items: center;
 }
 
 .cell-entry {
+  position: relative;
   border-radius: 6px;
   padding: 6px;
+  padding-top: 28px;
   cursor: pointer;
   border: 1px solid rgba(21, 32, 43, 0.08);
 }
 
-.cell-add {
+.cell-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.cell-add,
+.cell-paste,
+.entry-copy,
+.entry-login-check,
+.phone-copy {
   border: 1px dashed var(--line);
   border-radius: 6px;
   background: white;
@@ -485,6 +508,69 @@ td:first-child {
   cursor: pointer;
   min-height: 28px;
   font-size: 12px;
+}
+
+.entry-copy {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-height: 22px;
+  padding: 0 6px;
+}
+
+.entry-login-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-height: 22px;
+  padding: 0 7px;
+  border-style: solid;
+  border-color: #2f8f61;
+  background: #e9f8ef;
+  color: #236b49;
+  font-weight: 700;
+}
+
+.phone-copy {
+  min-height: 22px;
+  padding: 0 6px;
+  margin-right: 6px;
+}
+
+.phone-cell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.phone-archive {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: #7d2622;
+  cursor: pointer;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.phone-card.archived {
+  border-color: #ba3b35;
+  box-shadow: inset 4px 0 0 #ba3b35;
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 99;
+  background: var(--text);
+  color: white;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  box-shadow: 0 10px 24px rgba(21, 32, 43, 0.18);
+  font-size: 14px;
 }
 
 .cell.sold,
@@ -524,13 +610,89 @@ td:first-child {
   color: #415064;
   font-size: 12px;
   margin-top: 2px;
+  white-space: pre-line;
 }
 
 .record-list,
-.phone-list {
+.phone-list,
+.people-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
+}
+
+.phone-list {
+  grid-template-columns: 1fr;
+}
+
+.phone-lookup {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.phone-lookup select {
+  width: 100%;
+}
+
+.phone-lookup-card {
+  gap: 14px;
+}
+
+.phone-lookup-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.phone-lookup-title span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.device-grid article {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 12px;
+}
+
+.device-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.device-grid strong {
+  font-size: 22px;
+}
+
+.phone-detail-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.phone-detail-list div {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 10px;
+}
+
+.phone-detail-list dt {
+  color: var(--muted);
+}
+
+.phone-detail-list dd {
+  margin: 0;
 }
 
 .finance-summary {
@@ -561,7 +723,7 @@ td:first-child {
 
 .finance-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
   gap: 14px;
 }
 
@@ -593,10 +755,34 @@ td:first-child {
 }
 
 .record-card,
-.phone-card {
+.phone-card,
+.person-card {
   padding: 14px;
   display: grid;
   gap: 10px;
+}
+
+.person-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.person-card h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.person-carrier {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.person-carrier p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .record-card {
@@ -615,6 +801,7 @@ td:first-child {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+  white-space: pre-line;
 }
 
 .record-note,
@@ -679,6 +866,11 @@ td:first-child {
 
   .finance-summary,
   .finance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .device-grid,
+  .phone-detail-list div {
     grid-template-columns: 1fr;
   }
 
