@@ -298,7 +298,7 @@ function render() {
 function renderStats() {
   els.phoneCount.textContent = data.phones.filter(isActivePhone).length;
   els.soldTotal.textContent = cancelDueRecords().length;
-  els.availableCount.textContent = data.records.filter((item) => normalizeStatus(item.status) === "cancelled_registerable").length;
+  els.availableCount.textContent = loginCheckDueRecords().length;
   els.blockedCount.textContent = currency(monthSoldTotal());
   els.costTotal.textContent = currency(sum(data.phones.map(phoneTotalCost)));
   els.loginCheckDueCount.textContent = loginCheckDueRecords().length;
