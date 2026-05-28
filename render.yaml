@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: phone-sales-sync
+    env: node
+    plan: starter
+    buildCommand: ""
+    startCommand: "node server.js"
+    envVars:
+      - key: SYNC_TOKEN
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: phone-sales-data
+      mountPath: /var/data
+      sizeGB: 1

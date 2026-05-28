@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>&#25163;&#26426;&#21495;&#21806;&#21334;&#35760;&#24405;</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">&#25163;&#26426;&#27880;&#20876; app &#31649;&#29702;</p>
+          <h1>&#25163;&#26426;&#21495;&#21806;&#21334;&#35760;&#24405;</h1>
+        </div>
+        <div class="actions">
+          <button class="icon-button" id="exportBtn" title="Export JSON" aria-label="Export JSON">↓</button>
+          <label class="icon-button" title="Import JSON" aria-label="Import JSON">
+            ↑
+            <input id="importFile" type="file" accept="application/json" hidden />
+          </label>
+          <button class="ghost-button" id="resetDemoBtn">&#24674;&#22797;&#31034;&#20363;</button>
+        </div>
+      </header>
+
+      <section class="stats" aria-label="stats">
+        <article>
+          <span>&#25163;&#26426;&#21495;</span>
+          <strong id="phoneCount">0</strong>
+        </article>
+        <article>
+          <span>APP&#35760;&#24405;</span>
+          <strong id="recordCount">0</strong>
+        </article>
+        <article>
+          <span>&#24050;&#21806;&#37329;&#39069;</span>
+          <strong id="soldTotal">¥0</strong>
+        </article>
+        <article>
+          <span>&#21487;&#27880;&#20876;</span>
+          <strong id="availableCount">0</strong>
+        </article>
+        <article>
+          <span>&#26080;&#27861;&#27880;&#20876;</span>
+          <strong id="blockedCount">0</strong>
+        </article>
+        <article>
+          <span>&#24635;&#25104;&#26412;</span>
+          <strong id="costTotal">¥0</strong>
+        </article>
+        <article>
+          <span>&#21487;&#27880;&#38144;&#25552;&#37266;</span>
+          <strong id="cancelDueCount">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel">
+          <div class="panel-head">
+            <h2>&#24555;&#36895;&#24405;&#20837;</h2>
+            <button class="text-button" id="clearFormBtn">&#28165;&#31354;</button>
+          </div>
+          <form id="recordForm" class="form">
+            <label>
+              &#25163;&#26426;&#21495;
+              <input name="phone" list="phoneOptions" inputmode="numeric" autocomplete="off" placeholder="13294936354" required />
+              <datalist id="phoneOptions"></datalist>
+              <div class="quick-phone-list" id="quickPhoneList"></div>
+            </label>
+            <div class="split compact">
+              <label>
+                &#21345;&#36153;
+                <input name="cardFee" inputmode="decimal" placeholder="0" />
+              </label>
+              <label>
+                &#39318;&#20805;
+                <input name="initialRecharge" inputmode="decimal" placeholder="0" />
+              </label>
+            </div>
+            <div class="split compact">
+              <label>
+                &#26376;&#31199;
+                <input name="monthlyRent" inputmode="decimal" placeholder="0" />
+              </label>
+              <label>
+                &#20154;&#24037;
+                <input name="laborCost" inputmode="decimal" placeholder="0" />
+              </label>
+            </div>
+            <div class="cost-line">
+              <span>&#24635;&#25104;&#26412;</span>
+              <strong id="formTotalCost">¥0</strong>
+            </div>
+            <div class="split">
+              <label>
+                &#36816;&#33829;&#21830;
+                <input name="carrier" placeholder="&#32852;&#36890; / &#31227;&#21160; / &#30005;&#20449;" />
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                &#24320;&#21345;&#20154;
+                <input name="cardOwner" placeholder="&#24320;&#21345;&#20154;" />
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                &#35774;&#22791;&#32534;&#21495;
+                <input name="deviceNo" placeholder="&#20363;&#22914; A01" />
+              </label>
+              <label>
+                &#21345;&#27133;&#32534;&#21495;
+                <input name="slotNo" placeholder="&#20363;&#22914; 1" />
+              </label>
+            </div>
+            <label>
+              APP
+              <div class="inline-add">
+                <select name="platform" required></select>
+                <button class="icon-button" id="addAppBtn" type="button" title="Add APP" aria-label="Add APP">+</button>
+                <button class="icon-button danger-icon" id="deleteAppBtn" type="button" title="Delete APP" aria-label="Delete APP">×</button>
+              </div>
+            </label>
+            <div class="split">
+              <label>
+                &#29366;&#24577;
+                <select name="status" required></select>
+              </label>
+              <label>
+                &#37329;&#39069;
+                <input name="price" inputmode="decimal" placeholder="70" />
+              </label>
+            </div>
+            <div class="contact-rows">
+              <span>&#25104;&#20132;&#24179;&#21488; / &#26165;&#31216;</span>
+              <label class="contact-row">
+                <input type="checkbox" name="contactPlatform" value="&#38386;&#40060;" />
+                <strong>&#38386;&#40060;</strong>
+                <input name="contactNickname_xianyu" placeholder="&#38386;&#40060;&#26165;&#31216;" />
+              </label>
+              <label class="contact-row">
+                <input type="checkbox" name="contactPlatform" value="QQ" />
+                <strong>QQ</strong>
+                <input name="contactNickname_qq" placeholder="QQ&#26165;&#31216;" />
+              </label>
+              <label class="contact-row">
+                <input type="checkbox" name="contactPlatform" value="&#24494;&#20449;" />
+                <strong>&#24494;&#20449;</strong>
+                <input name="contactNickname_wechat" placeholder="&#24494;&#20449;&#26165;&#31216;" />
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                &#26085;&#26399;
+                <input name="date" type="date" />
+              </label>
+              <label>
+                &#20960;&#22825;&#21518;&#21487;&#27880;&#38144;
+                <input name="cancelAfterDays" inputmode="numeric" placeholder="&#20363;&#22914; 3" />
+              </label>
+            </div>
+            <div class="reminder-line" id="formCancelHint">&#26410;&#35774;&#32622;&#27880;&#38144;&#25552;&#37266;</div>
+            <label>
+              &#22791;&#27880;
+              <textarea name="note" rows="3" placeholder="&#23454;&#21517;&#12289;&#27880;&#38144;&#12289;&#36339;&#39564;&#35777;&#12289;&#32570;&#24037;&#20316;&#23460;&#31561;"></textarea>
+            </label>
+            <button class="primary-button" type="submit">&#20445;&#23384;&#35760;&#24405;</button>
+          </form>
+        </aside>
+
+        <section class="main-panel">
+          <div class="toolbar">
+            <div class="search">
+              <span>⌕</span>
+              <input id="searchInput" placeholder="&#25628;&#32034;&#25163;&#26426;&#21495;&#12289;APP&#12289;&#25104;&#20132;&#24179;&#21488;&#12289;&#26165;&#31216;&#12289;&#22791;&#27880;" />
+            </div>
+            <select id="statusFilter" aria-label="status filter"></select>
+            <select id="platformFilter" aria-label="APP filter"></select>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-view="matrix" type="button">&#30697;&#38453;</button>
+            <button class="tab" data-view="records" type="button">&#26126;&#32454;</button>
+            <button class="tab" data-view="phones" type="button">&#25163;&#26426;&#21495;</button>
+            <button class="tab" data-view="finance" type="button">&#36130;&#21153;</button>
+          </div>
+
+          <div id="matrixView" class="view active">
+            <div class="table-wrap">
+              <table id="matrixTable"></table>
+            </div>
+          </div>
+
+          <div id="recordsView" class="view">
+            <div id="recordList" class="record-list"></div>
+          </div>
+
+          <div id="phonesView" class="view">
+            <div id="phoneList" class="phone-list"></div>
+          </div>
+
+          <div id="financeView" class="view">
+            <section class="finance-summary">
+              <article>
+                <span>&#24635;&#25104;&#26412;</span>
+                <strong id="financeCost">¥0</strong>
+              </article>
+              <article>
+                <span>&#24050;&#21806;&#37329;&#39069;</span>
+                <strong id="financeSold">¥0</strong>
+              </article>
+              <article>
+                <span>&#21033;&#28070;</span>
+                <strong id="financeProfit">¥0</strong>
+              </article>
+            </section>
+            <div class="finance-grid">
+              <section>
+                <h2>APP&#36130;&#21153;</h2>
+                <div class="table-wrap finance-table-wrap">
+                  <table id="appFinanceTable"></table>
+                </div>
+              </section>
+              <section>
+                <h2>&#25163;&#26426;&#21495;&#36130;&#21153;</h2>
+                <div class="table-wrap finance-table-wrap">
+                  <table id="phoneFinanceTable"></table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="recordTemplate">
+      <article class="record-card">
+        <div>
+          <strong class="record-title"></strong>
+          <p class="record-meta"></p>
+        </div>
+        <span class="badge"></span>
+        <p class="record-note"></p>
+        <div class="card-actions">
+          <button class="text-button edit-record" type="button">&#32534;&#36753;</button>
+          <button class="danger-button delete-record" type="button">&#21024;&#38500;</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
