@@ -9,6 +9,7 @@
   --accent-2: #0f5a91;
   --sold: #dff2d1;
   --available: #fff5b8;
+  --registerable: #15803d;
   --blocked: #ffd4d1;
   --own: #ff1f1f;
   --own-blocked: #fff200;
@@ -620,6 +621,18 @@ td:first-child {
   background: var(--available);
 }
 
+.cell.registerable,
+.cell-entry.registerable {
+  background: var(--registerable);
+  color: white;
+}
+
+.cell.registerable span,
+.cell-entry.registerable span,
+.cell-entry.registerable .manual-note {
+  color: white;
+}
+
 .cell.blocked,
 .cell-entry.blocked {
   background: var(--blocked);
@@ -890,6 +903,11 @@ td:first-child {
 
 .badge.available {
   background: var(--available);
+}
+
+.badge.registerable {
+  background: var(--registerable);
+  color: white;
 }
 
 .badge.blocked {

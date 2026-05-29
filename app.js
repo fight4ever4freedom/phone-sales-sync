@@ -21,7 +21,7 @@ const statuses = [
   { value: "sold_verify", label: "\u5df2\u552e\u8df3\u9a8c\u8bc1", tone: "review" },
   { value: "sold_realname", label: "\u5df2\u552e\u88ab\u5b9e\u540d", tone: "realname-blocked" },
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
-  { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "available" },
+  { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "registerable" },
   { value: "own", label: "\u81ea\u7528", tone: "own" },
   { value: "own_blocked", label: "\u81ea\u7528\u5df2\u5c01\u7981", tone: "own-blocked" },
   { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "cannot-register" },
