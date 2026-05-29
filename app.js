@@ -1543,7 +1543,7 @@ function cancelText(item) {
   const state = cancelState(item);
   if (!state.dueDate) return "";
   if (state.isDue) return `\u53ef\u6ce8\u9500\uff1a${state.dueDate}`;
-  return `\u5f85\u6ce8\u9500\uff1a${state.dueDate}`;
+  return `\u53ef\u6ce8\u9500\uff1a${state.dueDate}`;
 }
 
 function actualCancelText(item) {
