@@ -18,7 +18,7 @@ const defaultPlatforms = [
 const statuses = [
   { value: "sold_pending_cancel", label: "\u5df2\u552e\u5f85\u6ce8\u9500", tone: "sold" },
   { value: "sold_blocked", label: "\u5df2\u552e\u5df2\u5c01\u7981", tone: "sold-blocked" },
-  { value: "sold_verify", label: "\u5df2\u552e\u8df3\u9a8c\u8bc1", tone: "review" },
+  { value: "sold_verify", label: "\u5df2\u552e\u8df3\u9a8c\u8bc1", tone: "verify-blocked" },
   { value: "sold_realname", label: "\u5df2\u552e\u88ab\u5b9e\u540d", tone: "realname-blocked" },
   { value: "testing", label: "\u5f85\u6d4b\u8bd5", tone: "review" },
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
@@ -84,12 +84,12 @@ const els = {
   formTotalCost: document.querySelector("#formTotalCost"),
   priceLabel: document.querySelector("#priceLabel"),
   formLoginCheckHint: document.querySelector("#formLoginCheckHint"),
-  formCancelHint: document.querySelector("#formCancelHint"),
   phoneOptions: document.querySelector("#phoneOptions"),
   quickPhoneList: document.querySelector("#quickPhoneList"),
   platformSelect: form.elements.platform,
   statusSelect: form.elements.status,
   platformFilter: document.querySelector("#platformFilter"),
+  platformFilterOptions: document.querySelector("#platformFilterOptions"),
   statusFilter: document.querySelector("#statusFilter"),
   searchInput: document.querySelector("#searchInput"),
   matrixTable: document.querySelector("#matrixTable"),
@@ -143,7 +143,7 @@ async function boot() {
 function fillOptions() {
   els.platformSelect.innerHTML = platforms.map((name) => option(name)).join("");
   els.statusSelect.innerHTML = statuses.map((item) => option(item.label, item.value)).join("");
-  els.platformFilter.innerHTML = option("\u5168\u90e8APP", "all") + platforms.map((name) => option(name)).join("");
+  els.platformFilterOptions.innerHTML = platforms.map((name) => `<option value="${escapeAttr(name)}"></option>`).join("");
   els.statusFilter.innerHTML = option("\u5168\u90e8\u72b6\u6001", "all") + statuses.map((item) => option(item.label, item.value)).join("");
 }
 
@@ -165,7 +165,7 @@ function addAppOption() {
   persist();
   fillOptions();
   form.elements.platform.value = appName;
-  els.platformFilter.value = "all";
+  els.platformFilter.value = "";
   render();
 }
 
@@ -184,7 +184,7 @@ function deleteAppOption() {
   persist();
   fillOptions();
   form.elements.platform.value = platforms[0] || "";
-  els.platformFilter.value = "all";
+  els.platformFilter.value = "";
   render();
 }
 
@@ -210,11 +210,11 @@ function bindEvents() {
   form.elements.carrier.addEventListener("input", applyCarrierCategory);
   form.elements.date.addEventListener("input", renderReminderHints);
   form.elements.loginCheckAfterDays.addEventListener("input", renderFormLoginCheckHint);
-  form.elements.cancelAfterDays.addEventListener("input", renderFormCancelHint);
   form.elements.status.addEventListener("change", updatePriceLabel);
   form.elements.phone.addEventListener("change", () => selectPhoneProfile(form.elements.phone.value));
   form.elements.phone.addEventListener("blur", () => selectPhoneProfile(form.elements.phone.value));
   els.searchInput.addEventListener("input", render);
+  els.platformFilter.addEventListener("input", render);
   els.platformFilter.addEventListener("change", render);
   els.statusFilter.addEventListener("change", render);
   document.querySelectorAll(".tab").forEach((button) => {
@@ -283,7 +283,6 @@ function saveRecord(event) {
     nickname: contacts[0]?.nickname || "",
     date: values.date,
     loginCheckAfterDays: wholeNumber(values.loginCheckAfterDays),
-    cancelAfterDays: wholeNumber(values.cancelAfterDays),
     registerableDate: values.registerableDate,
     actualCancelDate: values.actualCancelDate,
     note: values.note.trim(),
@@ -319,12 +318,12 @@ function render() {
 
 function renderStats() {
   els.phoneCount.textContent = data.phones.filter(isActivePhone).length;
-  els.soldTotal.textContent = cancelDueRecords().length;
+  els.soldTotal.textContent = data.records.filter((item) => item.actualCancelDate).length;
   els.availableCount.textContent = loginCheckDueRecords().length;
   els.blockedCount.textContent = currency(monthSoldTotal());
   els.costTotal.textContent = currency(sum(data.phones.map(phoneTotalCost)));
   els.loginCheckDueCount.textContent = loginCheckDueRecords().length;
-  els.cancelDueCount.textContent = cancelDueRecords().length;
+  els.cancelDueCount.textContent = 0;
 }
 
 function renderFinance() {
@@ -493,7 +492,7 @@ function renderMatrix(records) {
     if (!recordsByPhonePlatform.has(key)) recordsByPhonePlatform.set(key, []);
     recordsByPhonePlatform.get(key).push(item);
   });
-  const matrixPlatforms = sortedMatrixPlatforms();
+  const matrixPlatforms = matrixVisiblePlatforms();
   const header = `<tr><th>\u624b\u673a\u53f7</th>${matrixPlatforms.map((name) => `<th>
     <div class="matrix-head">
       <span>${escapeHtml(name)}</span>
@@ -519,7 +518,6 @@ function renderMatrix(records) {
             <strong>${escapeHtml(statusLabel(item.status))}${item.price ? ` · ${currency(item.price)}` : ""}</strong>
             <span>${escapeHtml([contactText(item), item.date].filter(Boolean).join(" / "))}</span>
             <span>${escapeHtml(loginCheckText(item))}</span>
-            <span>${escapeHtml(cancelText(item))}</span>
             <span>${escapeHtml(registerableText(item))}</span>
             <span>${escapeHtml(actualCancelText(item))}</span>
             <span class="manual-note">${escapeHtml(statusNoteText(item))}</span>
@@ -616,7 +614,6 @@ function renderRecords(records) {
         contactText(item),
         item.date,
         loginCheckText(item),
-        cancelText(item),
         registerableText(item),
         actualCancelText(item),
         statusNoteText(item),
@@ -625,7 +622,7 @@ function renderRecords(records) {
       const badge = node.querySelector(".badge");
       badge.textContent = statusLabel(item.status);
       badge.classList.add(statusTone(item.status));
-      if (loginCheckNeedsAction(item) || cancelState(item).isDue) node.querySelector(".record-card").classList.add("cancel-due");
+      if (loginCheckNeedsAction(item)) node.querySelector(".record-card").classList.add("cancel-due");
       node.querySelector(".edit-record").addEventListener("click", () => editRecord(item.id));
       node.querySelector(".delete-record").addEventListener("click", () => deleteRecord(item.id));
       els.recordList.appendChild(node);
@@ -759,7 +756,7 @@ function renderArchivedPhones(records) {
 
 function filteredRecords() {
   const text = els.searchInput.value.trim().toLowerCase();
-  const platform = els.platformFilter.value;
+  const platform = selectedPlatformFilter();
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
@@ -792,7 +789,6 @@ function editRecord(id) {
   setContactRows(contactEntries(item));
   form.elements.date.value = item.date || "";
   form.elements.loginCheckAfterDays.value = item.loginCheckAfterDays || "";
-  form.elements.cancelAfterDays.value = item.cancelAfterDays || "";
   form.elements.registerableDate.value = item.registerableDate || "";
   form.elements.actualCancelDate.value = item.actualCancelDate || "";
   form.elements.note.value = item.note || "";
@@ -854,6 +850,17 @@ function sortedMatrixPlatforms() {
     .map((item) => item.name);
 }
 
+function matrixVisiblePlatforms() {
+  const selected = selectedPlatformFilter();
+  if (selected) return [selected];
+  return sortedMatrixPlatforms();
+}
+
+function selectedPlatformFilter() {
+  const value = els.platformFilter.value.trim();
+  return platforms.includes(value) ? value : "";
+}
+
 function groupedMatrixPhones(phones) {
   const groups = [
     { label: "\u4e09\u7f51\u5385\u5361", items: [] },
@@ -886,7 +893,6 @@ function copyRecordTemplate(id) {
     nickname: contactEntries(item)[0]?.nickname || "",
     date: item.date,
     loginCheckAfterDays: item.loginCheckAfterDays,
-    cancelAfterDays: item.cancelAfterDays,
     registerableDate: item.registerableDate,
     actualCancelDate: item.actualCancelDate,
     note: item.note,
@@ -1451,7 +1457,7 @@ function cardCategoryLabel(value) {
 
 function isRegistrationCardBlockedPlatform(platform) {
   const name = String(platform || "").trim().toLowerCase();
-  return name === "qq" || name === "\u5c0f\u7ea2\u4e66";
+  return name === "qq" || name === "\u5c0f\u7ea2\u4e66" || name === "\u5fae\u535a";
 }
 
 function isBlockedPhonePlatform(phone, platform) {
@@ -1528,22 +1534,11 @@ function hasLoginCheckLog(item) {
   return Array.isArray(item?.loginCheckLogs) && item.loginCheckLogs.length > 0;
 }
 
-function cancelDueRecords() {
-  return data.records.filter((item) => cancelState(item).isDue);
-}
-
 function loginCheckText(item) {
   const state = loginCheckState(item);
   if (!state.dueDate) return "";
   if (state.isDue) return `\u53ef\u767b\u5f55\u67e5\u770b\uff1a${state.dueDate}`;
   return `\u5f85\u767b\u5f55\u67e5\u770b\uff1a${state.dueDate}`;
-}
-
-function cancelText(item) {
-  const state = cancelState(item);
-  if (!state.dueDate) return "";
-  if (state.isDue) return `\u53ef\u6ce8\u9500\uff1a${state.dueDate}`;
-  return `\u53ef\u6ce8\u9500\uff1a${state.dueDate}`;
 }
 
 function actualCancelText(item) {
@@ -1560,17 +1555,6 @@ function registerableText(item) {
 
 function loginCheckState(item) {
   const days = wholeNumber(item?.loginCheckAfterDays);
-  if (!item?.date || !days) return { dueDate: "", isDue: false };
-  const due = addDays(item.date, days);
-  const dueDate = formatDate(due);
-  return {
-    dueDate,
-    isDue: due.getTime() <= startOfToday().getTime(),
-  };
-}
-
-function cancelState(item) {
-  const days = wholeNumber(item?.cancelAfterDays);
   if (!item?.date || !days) return { dueDate: "", isDue: false };
   const due = addDays(item.date, days);
   const dueDate = formatDate(due);
@@ -1611,7 +1595,6 @@ function formatDate(date) {
 
 function renderReminderHints() {
   renderFormLoginCheckHint();
-  renderFormCancelHint();
 }
 
 function renderFormLoginCheckHint() {
@@ -1627,21 +1610,6 @@ function renderFormLoginCheckHint() {
     ? `\u5df2\u5230\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`
     : `\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`;
   els.formLoginCheckHint.classList.toggle("due", state.isDue);
-}
-
-function renderFormCancelHint() {
-  const date = form.elements.date.value;
-  const days = wholeNumber(form.elements.cancelAfterDays.value);
-  if (!date || !days) {
-    els.formCancelHint.textContent = "\u672a\u8bbe\u7f6e\u6ce8\u9500\u63d0\u9192";
-    els.formCancelHint.classList.remove("due");
-    return;
-  }
-  const state = cancelState({ date, cancelAfterDays: days });
-  els.formCancelHint.textContent = state.isDue
-    ? `\u5df2\u5230\u53ef\u6ce8\u9500\u65f6\u95f4\uff1a${state.dueDate}`
-    : `\u53ef\u6ce8\u9500\u65f6\u95f4\uff1a${state.dueDate}`;
-  els.formCancelHint.classList.toggle("due", state.isDue);
 }
 
 function inferContactPlatform(value = "") {
@@ -1720,7 +1688,6 @@ function normalizeData(next) {
       statusNote: item.statusNote || "",
       loginCheckLogs: Array.isArray(item.loginCheckLogs) ? item.loginCheckLogs : [],
       loginCheckAfterDays: wholeNumber(item.loginCheckAfterDays),
-      cancelAfterDays: wholeNumber(item.cancelAfterDays),
       registerableDate: item.registerableDate || "",
       actualCancelDate: item.actualCancelDate || "",
     })),

@@ -169,13 +169,6 @@
               </label>
             </div>
             <div class="reminder-line" id="formLoginCheckHint">&#26410;&#35774;&#32622;&#30331;&#24405;&#26597;&#30475;&#25552;&#37266;</div>
-            <div class="split">
-              <label>
-                &#20960;&#22825;&#21518;&#21487;&#27880;&#38144;
-                <input name="cancelAfterDays" inputmode="numeric" placeholder="&#20363;&#22914; 3" />
-              </label>
-            </div>
-            <div class="reminder-line" id="formCancelHint">&#26410;&#35774;&#32622;&#27880;&#38144;&#25552;&#37266;</div>
             <label>
               &#20960;&#21495;&#21487;&#27880;&#20876;
               <input name="registerableDate" type="date" />
@@ -199,7 +192,8 @@
               <input id="searchInput" placeholder="&#25628;&#32034;&#25163;&#26426;&#21495;&#12289;APP&#12289;&#25104;&#20132;&#24179;&#21488;&#12289;&#26165;&#31216;&#12289;&#22791;&#27880;" />
             </div>
             <select id="statusFilter" aria-label="status filter"></select>
-            <select id="platformFilter" aria-label="APP filter"></select>
+            <input id="platformFilter" list="platformFilterOptions" placeholder="&#20840;&#37096;APP" aria-label="APP filter" />
+            <datalist id="platformFilterOptions"></datalist>
           </div>
 
           <div class="tabs" role="tablist">
