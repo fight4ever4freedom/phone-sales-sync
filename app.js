@@ -22,6 +22,7 @@ const statuses = [
   { value: "sold_realname", label: "\u5df2\u552e\u88ab\u5b9e\u540d", tone: "realname-blocked" },
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
   { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "registerable" },
+  { value: "cancelled_registered", label: "\u5df2\u6ce8\u9500\u5df2\u6ce8\u518c", tone: "registered" },
   { value: "own", label: "\u81ea\u7528", tone: "own" },
   { value: "own_blocked", label: "\u81ea\u7528\u5df2\u5c01\u7981", tone: "own-blocked" },
   { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "cannot-register" },
@@ -365,7 +366,7 @@ function renderAppFinance() {
   const rows = platforms.map((platform) => {
     const records = data.records.filter((item) => item.platform === platform);
     const sold = records.filter(isSoldRecord);
-    const income = recordsTotal(sold);
+    const income = platformSoldIncome(platform);
     return {
       name: platform,
       records: records.length,
@@ -472,19 +473,16 @@ function renderMatrix(records) {
     if (!recordsByPhonePlatform.has(key)) recordsByPhonePlatform.set(key, []);
     recordsByPhonePlatform.get(key).push(item);
   });
-  const header = `<tr><th>\u624b\u673a\u53f7</th>${platforms.map((name) => `<th>
+  const matrixPlatforms = sortedMatrixPlatforms();
+  const header = `<tr><th>\u624b\u673a\u53f7</th>${matrixPlatforms.map((name) => `<th>
     <div class="matrix-head">
       <span>${escapeHtml(name)}</span>
-      <div class="matrix-order-actions">
-        <button type="button" class="column-move" data-platform="${escapeAttr(name)}" data-direction="-1" title="\u5de6\u79fb">\u2190</button>
-        <button type="button" class="column-move" data-platform="${escapeAttr(name)}" data-direction="1" title="\u53f3\u79fb">\u2192</button>
-      </div>
     </div>
   </th>`).join("")}</tr>`;
   const rows = data.phones
     .filter((phone) => isActivePhone(phone) && phoneMatches(phone, records))
     .map((phone) => {
-      const cells = platforms.map((platform) => {
+      const cells = matrixPlatforms.map((platform) => {
         const items = recordsByPhonePlatform.get(`${phone.id}-${platform}`) || [];
         if (!items.length) {
           return `<td><div class="cell empty" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}"><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button><span>+</span></div></td>`;
@@ -506,7 +504,7 @@ function renderMatrix(records) {
     })
     .join("");
 
-  els.matrixTable.innerHTML = header + (rows || `<tr><td colspan="${platforms.length + 1}" class="empty-state">\u6ca1\u6709\u5339\u914d\u8bb0\u5f55</td></tr>`);
+  els.matrixTable.innerHTML = header + (rows || `<tr><td colspan="${matrixPlatforms.length + 1}" class="empty-state">\u6ca1\u6709\u5339\u914d\u8bb0\u5f55</td></tr>`);
   els.matrixTable.querySelectorAll("[data-record]").forEach((cell) => {
     cell.addEventListener("click", () => editRecord(cell.dataset.record));
   });
@@ -550,12 +548,6 @@ function renderMatrix(records) {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       movePhoneRow(button.dataset.phoneId, Number(button.dataset.direction));
-    });
-  });
-  els.matrixTable.querySelectorAll(".column-move").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      movePlatformColumn(button.dataset.platform, Number(button.dataset.direction));
     });
   });
   els.matrixTable.querySelectorAll(".cell.empty").forEach((cell) => {
@@ -817,16 +809,19 @@ function movePhoneRow(id, direction) {
   render();
 }
 
-function movePlatformColumn(name, direction) {
-  const index = platforms.indexOf(name);
-  const target = index + direction;
-  if (index < 0 || target < 0 || target >= platforms.length) return;
-  pushUndo();
-  [platforms[index], platforms[target]] = [platforms[target], platforms[index]];
-  data.platforms = platforms;
-  persist();
-  fillOptions();
-  render();
+function sortedMatrixPlatforms() {
+  return platforms
+    .map((platform, index) => ({
+      name: platform,
+      index,
+      income: platformSoldIncome(platform),
+    }))
+    .sort((a, b) => (b.income - a.income) || (a.index - b.index))
+    .map((item) => item.name);
+}
+
+function platformSoldIncome(platform) {
+  return recordsTotal(data.records.filter((item) => item.platform === platform && isSoldRecord(item)));
 }
 
 function copyRecordTemplate(id) {

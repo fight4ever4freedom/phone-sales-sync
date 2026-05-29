@@ -10,6 +10,7 @@
   --sold: #dff2d1;
   --available: #fff5b8;
   --registerable: #15803d;
+  --registered: #ffe8f1;
   --blocked: #ffd4d1;
   --own: #ff1f1f;
   --own-blocked: #fff200;
@@ -564,13 +565,6 @@ td:first-child {
   justify-items: center;
 }
 
-.matrix-order-actions {
-  display: flex;
-  gap: 4px;
-  justify-content: center;
-}
-
-.matrix-order-actions button,
 .phone-row-move {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -631,6 +625,11 @@ td:first-child {
 .cell-entry.registerable span,
 .cell-entry.registerable .manual-note {
   color: white;
+}
+
+.cell.registered,
+.cell-entry.registered {
+  background: var(--registered);
 }
 
 .cell.blocked,
@@ -908,6 +907,10 @@ td:first-child {
 .badge.registerable {
   background: var(--registerable);
   color: white;
+}
+
+.badge.registered {
+  background: var(--registered);
 }
 
 .badge.blocked {
