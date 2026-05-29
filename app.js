@@ -372,7 +372,8 @@ function renderAppFinance() {
       sold: sold.length,
       income,
     };
-  }).filter((row) => row.records || row.income);
+  }).filter((row) => row.records || row.income)
+    .sort((a, b) => b.income - a.income);
 
   els.appFinanceTable.innerHTML = financeTable(
     ["APP", "\u8bb0\u5f55", "\u5df2\u552e", "\u5df2\u552e\u91d1\u989d"],
@@ -394,7 +395,8 @@ function renderPhoneFinance() {
       cost,
       profit: income - cost,
     };
-  }).filter((row) => row.records || row.cost || row.income);
+  }).filter((row) => row.records || row.cost || row.income)
+    .sort((a, b) => b.profit - a.profit);
 
   els.phoneFinanceTable.innerHTML = financeTable(
     ["\u624b\u673a\u53f7", "\u8bb0\u5f55", "\u5df2\u552e", "\u6210\u672c", "\u5df2\u552e\u91d1\u989d", "\u5229\u6da6"],
