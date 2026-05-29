@@ -207,6 +207,7 @@ function bindEvents() {
   ["cardFee", "initialRecharge", "monthlyRent", "personCost"].forEach((name) => {
     form.elements[name].addEventListener("input", renderFormCost);
   });
+  form.elements.carrier.addEventListener("input", applyCarrierCategory);
   form.elements.date.addEventListener("input", renderReminderHints);
   form.elements.loginCheckAfterDays.addEventListener("input", renderFormLoginCheckHint);
   form.elements.cancelAfterDays.addEventListener("input", renderFormCancelHint);
@@ -228,6 +229,13 @@ function saveRecord(event) {
   const values = Object.fromEntries(formData.entries());
   const contacts = contactRowsFromForm(formData);
   const phoneNumber = values.phone.trim();
+  const carrier = values.carrier.trim();
+  const cardCategory = values.cardCategory || inferCardCategory(carrier);
+  if (carrier && !cardCategory) {
+    alert("\u65b0\u8fd0\u8425\u5546\u5fc5\u987b\u9009\u62e9\u5361\u7c7b\u578b\uff1a\u4e09\u7f51\u5385\u5361\u6216\u6ce8\u518c\u5361\u3002");
+    form.elements.cardCategory.focus();
+    return;
+  }
   let phone = data.phones.find((item) => item.number === phoneNumber);
 
   if (!phone) {
@@ -239,7 +247,8 @@ function saveRecord(event) {
       monthlyRent: moneyValue(values.monthlyRent),
       personName: values.personName.trim(),
       personCost: moneyValue(values.personCost),
-      carrier: values.carrier.trim(),
+      carrier,
+      cardCategory,
       deviceNo: values.deviceNo.trim(),
       slotNo: values.slotNo.trim(),
     };
@@ -250,9 +259,15 @@ function saveRecord(event) {
     phone.monthlyRent = moneyField(values.monthlyRent, phone.monthlyRent);
     phone.personName = values.personName.trim() || phone.personName || "";
     phone.personCost = moneyField(values.personCost, phone.personCost);
-    phone.carrier = values.carrier.trim() || phone.carrier || "";
+    phone.carrier = carrier || phone.carrier || "";
+    phone.cardCategory = cardCategory || phone.cardCategory || inferCardCategory(phone.carrier);
     phone.deviceNo = values.deviceNo.trim() || phone.deviceNo || "";
     phone.slotNo = values.slotNo.trim() || phone.slotNo || "";
+  }
+
+  if (isBlockedPhonePlatform(phone, values.platform)) {
+    alert("\u6ce8\u518c\u5361\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ\uff0c\u8fd9\u4e2a\u77e9\u9635\u683c\u65e0\u6cd5\u9009\u62e9\u3002");
+    return;
   }
 
   const nextRecord = {
@@ -489,7 +504,11 @@ function renderMatrix(records) {
     .map((phone) => {
       const cells = matrixPlatforms.map((platform) => {
         const items = recordsByPhonePlatform.get(`${phone.id}-${platform}`) || [];
+        const blockedPlatform = isBlockedPhonePlatform(phone, platform);
         if (!items.length) {
+          if (blockedPlatform) {
+            return `<td><div class="cell blocked-platform"><strong>\u6ce8\u518c\u5361</strong><span>${escapeHtml(blockedPlatformText(phone, platform))}</span></div></td>`;
+          }
           return `<td><div class="cell empty" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}"><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button><span>+</span></div></td>`;
         }
         const entries = items.map((item) => `<div class="cell-entry ${statusTone(item.status)}" data-record="${item.id}">
@@ -505,9 +524,10 @@ function renderMatrix(records) {
             <span class="manual-note">${escapeHtml(statusNoteText(item))}</span>
             <span class="manual-note">${escapeHtml(item.note || "")}</span>
           </div>`).join("");
-        return `<td><div class="cell filled">${entries}<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div></div></td>`;
+        const actions = blockedPlatform ? "" : `<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div>`;
+        return `<td><div class="cell filled">${entries}${actions}</div></td>`;
       });
-      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(phoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(matrixPhoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
     })
     .join("");
 
@@ -669,6 +689,7 @@ function phoneLookupDetail(phone, recordCount) {
       <dl class="phone-detail-list">
         <div><dt>\u59d3\u540d</dt><dd>${escapeHtml(phone.personName || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
+        <div><dt>\u5361\u7c7b\u578b</dt><dd>${escapeHtml(cardCategoryLabel(phone.cardCategory || inferCardCategory(phone.carrier)))}</dd></div>
         <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
         <div><dt>\u603b\u6210\u672c</dt><dd>${currency(phoneTotalCost(phone))}</dd></div>
         <div><dt>\u5e73\u53f0\u8bb0\u5f55</dt><dd>\u5f53\u524d\u7b5b\u9009\u4e0b ${recordCount} \u6761</dd></div>
@@ -796,6 +817,7 @@ function fillPhoneFields(phone) {
   form.elements.personName.value = phone.personName || "";
   form.elements.personCost.value = displayNumber(phone.personCost);
   form.elements.carrier.value = phone.carrier || "";
+  form.elements.cardCategory.value = phone.cardCategory || inferCardCategory(phone.carrier) || "";
   form.elements.deviceNo.value = phone.deviceNo || "";
   form.elements.slotNo.value = phone.slotNo || "";
   renderFormCost();
@@ -884,6 +906,10 @@ function pasteRecordTemplate(phoneNumber, platform) {
   }
   const phone = phoneByNumber(phoneNumber);
   if (!phone) return;
+  if (isBlockedPhonePlatform(phone, platform)) {
+    toast("\u6ce8\u518c\u5361\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ");
+    return;
+  }
   pushUndo();
   data.records.push({
     ...cloneData(copiedRecord),
@@ -1378,7 +1404,46 @@ function phoneCancelDate(phone) {
 }
 
 function phoneSummary(phone) {
-  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" · ");
+  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", cardCategoryLabel(phone?.cardCategory || inferCardCategory(phone?.carrier)), phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" · ");
+}
+
+function matrixPhoneSummary(phone) {
+  return [phone?.personName || "", phone?.carrier || ""].filter(Boolean).join(" · ");
+}
+
+function applyCarrierCategory() {
+  const inferred = inferCardCategory(form.elements.carrier.value);
+  if (inferred) form.elements.cardCategory.value = inferred;
+}
+
+function isRegistrationCard(phone) {
+  return (phone?.cardCategory || inferCardCategory(phone?.carrier)) === "registration";
+}
+
+function inferCardCategory(carrierValue = "") {
+  const carrier = String(carrierValue || "");
+  if (carrier.includes("\u957f\u57ce\u79fb\u52a8") || carrier.includes("\u6c11\u751f\u7535\u4fe1")) return "registration";
+  if (carrier.includes("\u4e2d\u56fd\u8054\u901a") || carrier.includes("\u8054\u901a")) return "hall";
+  return "";
+}
+
+function cardCategoryLabel(value) {
+  if (value === "registration") return "\u6ce8\u518c\u5361";
+  if (value === "hall") return "\u4e09\u7f51\u5385\u5361";
+  return "";
+}
+
+function isQQPlatform(platform) {
+  return String(platform || "").trim().toLowerCase() === "qq";
+}
+
+function isBlockedPhonePlatform(phone, platform) {
+  return isRegistrationCard(phone) && isQQPlatform(platform);
+}
+
+function blockedPlatformText(phone, platform) {
+  if (isBlockedPhonePlatform(phone, platform)) return "\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ";
+  return "";
 }
 
 function contactText(item) {
@@ -1615,6 +1680,7 @@ function normalizeData(next) {
       personName: phone.personName || phone.cardOwner || "",
       personCost: moneyValue(phone.personCost ?? phone.laborCost),
       carrier: phone.carrier || phone.tag || "",
+      cardCategory: phone.cardCategory || inferCardCategory(phone.carrier || phone.tag || ""),
       deviceNo: phone.deviceNo || "",
       slotNo: phone.slotNo || "",
       phoneStatus: phone.phoneStatus || "active",
