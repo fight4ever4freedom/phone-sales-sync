@@ -310,7 +310,7 @@ function renderStats() {
 
 function renderFinance() {
   const totalCost = totalPhoneCost();
-  const soldTotal = recordsTotal(soldRecords());
+  const soldTotal = recordsTotal(paidRecords());
   const profit = soldTotal - totalCost;
   els.financeCost.textContent = currency(totalCost);
   els.financeSold.textContent = currency(soldTotal);
@@ -333,7 +333,7 @@ function renderMonthFinance() {
     }
     const row = ensureMonthRow(monthMap, month);
     row.records += 1;
-    if (isSoldRecord(item)) {
+    if (hasRecordPrice(item)) {
       row.sold += 1;
       row.income += Number(item.price || 0);
     }
@@ -366,7 +366,7 @@ function renderMonthFinance() {
 function renderAppFinance() {
   const rows = platforms.map((platform) => {
     const records = data.records.filter((item) => item.platform === platform);
-    const sold = records.filter(isSoldRecord);
+    const sold = records.filter(hasRecordPrice);
     const income = platformSoldIncome(platform);
     return {
       name: platform,
@@ -387,7 +387,7 @@ function renderAppFinance() {
 function renderPhoneFinance() {
   const rows = data.phones.map((phone) => {
     const records = data.records.filter((item) => item.phoneId === phone.id);
-    const sold = records.filter(isSoldRecord);
+    const sold = records.filter(hasRecordPrice);
     const income = recordsTotal(sold);
     const cost = phoneTotalCost(phone);
     return {
@@ -405,7 +405,7 @@ function renderPhoneFinance() {
     rows.map((row) => [
       `${row.phone.number}${row.phone.carrier ? ` · ${row.phone.carrier}` : ""}${row.phone.personName ? ` · ${row.phone.personName}` : ""}`,
       row.records,
-      data.records.filter((item) => item.phoneId === row.phone.id && isSoldRecord(item)).length,
+      data.records.filter((item) => item.phoneId === row.phone.id && hasRecordPrice(item)).length,
       currency(row.cost),
       currency(row.income),
       { html: `<span class="${row.profit < 0 ? "negative" : ""}">${currency(row.profit)}</span>` },
@@ -448,7 +448,7 @@ function currentMonth() {
 
 function monthSoldTotal() {
   const month = currentMonth();
-  return recordsTotal(data.records.filter((item) => isSoldRecord(item) && recordMonth(item) === month));
+  return recordsTotal(data.records.filter((item) => hasRecordPrice(item) && recordMonth(item) === month));
 }
 
 function renderPhoneOptions() {
@@ -825,7 +825,7 @@ function sortedMatrixPlatforms() {
 }
 
 function platformSoldIncome(platform) {
-  return recordsTotal(data.records.filter((item) => item.platform === platform && Number(item.price || 0)));
+  return recordsTotal(data.records.filter((item) => item.platform === platform && hasRecordPrice(item)));
 }
 
 function copyRecordTemplate(id) {
@@ -1284,6 +1284,14 @@ function isSoldRecord(item) {
 
 function soldRecords() {
   return data.records.filter(isSoldRecord);
+}
+
+function hasRecordPrice(item) {
+  return Number(item?.price || 0) > 0;
+}
+
+function paidRecords() {
+  return data.records.filter(hasRecordPrice);
 }
 
 function recordsTotal(records) {
