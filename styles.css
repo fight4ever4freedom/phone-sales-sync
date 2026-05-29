@@ -10,7 +10,8 @@
   --sold: #dff2d1;
   --available: #fff5b8;
   --blocked: #ffd4d1;
-  --own: #e6e9ef;
+  --own: #ff1f1f;
+  --own-blocked: #fff200;
   --review: #d8ebff;
   --radius: 8px;
   font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
@@ -593,6 +594,11 @@ td:first-child {
   background: var(--own);
 }
 
+.cell.own-blocked,
+.cell-entry.own-blocked {
+  background: var(--own-blocked);
+}
+
 .cell.review,
 .cell-entry.review {
   background: var(--review);
@@ -841,6 +847,10 @@ td:first-child {
 
 .badge.own {
   background: var(--own);
+}
+
+.badge.own-blocked {
+  background: var(--own-blocked);
 }
 
 .badge.review {

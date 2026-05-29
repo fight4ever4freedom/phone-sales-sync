@@ -23,6 +23,7 @@ const statuses = [
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
   { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "available" },
   { value: "own", label: "\u81ea\u7528", tone: "own" },
+  { value: "own_blocked", label: "\u81ea\u7528\u5df2\u5c01\u7981", tone: "own-blocked" },
   { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "blocked" },
 ];
 
