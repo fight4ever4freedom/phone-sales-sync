@@ -470,7 +470,15 @@ function renderMatrix(records) {
     if (!recordsByPhonePlatform.has(key)) recordsByPhonePlatform.set(key, []);
     recordsByPhonePlatform.get(key).push(item);
   });
-  const header = `<tr><th>\u624b\u673a\u53f7</th>${platforms.map((name) => `<th>${escapeHtml(name)}</th>`).join("")}</tr>`;
+  const header = `<tr><th>\u624b\u673a\u53f7</th>${platforms.map((name) => `<th>
+    <div class="matrix-head">
+      <span>${escapeHtml(name)}</span>
+      <div class="matrix-order-actions">
+        <button type="button" class="column-move" data-platform="${escapeAttr(name)}" data-direction="-1" title="\u5de6\u79fb">\u2190</button>
+        <button type="button" class="column-move" data-platform="${escapeAttr(name)}" data-direction="1" title="\u53f3\u79fb">\u2192</button>
+      </div>
+    </div>
+  </th>`).join("")}</tr>`;
   const rows = data.phones
     .filter((phone) => isActivePhone(phone) && phoneMatches(phone, records))
     .map((phone) => {
@@ -492,7 +500,7 @@ function renderMatrix(records) {
           </div>`).join("");
         return `<td><div class="cell filled">${entries}<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div></div></td>`;
       });
-      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(phoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(phoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
     })
     .join("");
 
@@ -534,6 +542,18 @@ function renderMatrix(records) {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       archivePhone(button.dataset.phoneId, button.dataset.status);
+    });
+  });
+  els.matrixTable.querySelectorAll(".phone-row-move").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      movePhoneRow(button.dataset.phoneId, Number(button.dataset.direction));
+    });
+  });
+  els.matrixTable.querySelectorAll(".column-move").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      movePlatformColumn(button.dataset.platform, Number(button.dataset.direction));
     });
   });
   els.matrixTable.querySelectorAll(".cell.empty").forEach((cell) => {
@@ -782,6 +802,28 @@ function deleteRecord(id) {
   pushUndo();
   data.records = data.records.filter((item) => item.id !== id);
   persist();
+  render();
+}
+
+function movePhoneRow(id, direction) {
+  const index = data.phones.findIndex((phone) => phone.id === id);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= data.phones.length) return;
+  pushUndo();
+  [data.phones[index], data.phones[target]] = [data.phones[target], data.phones[index]];
+  persist();
+  render();
+}
+
+function movePlatformColumn(name, direction) {
+  const index = platforms.indexOf(name);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= platforms.length) return;
+  pushUndo();
+  [platforms[index], platforms[target]] = [platforms[target], platforms[index]];
+  data.platforms = platforms;
+  persist();
+  fillOptions();
   render();
 }
 

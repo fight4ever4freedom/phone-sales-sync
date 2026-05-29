@@ -557,6 +557,30 @@ td:first-child {
   margin-bottom: 6px;
 }
 
+.matrix-head {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.matrix-order-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.matrix-order-actions button,
+.phone-row-move {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--accent-2);
+  cursor: pointer;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
 .phone-archive {
   border: 1px solid var(--line);
   border-radius: 6px;
