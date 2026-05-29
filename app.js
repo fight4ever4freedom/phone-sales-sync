@@ -265,6 +265,7 @@ function saveRecord(event) {
     date: values.date,
     loginCheckAfterDays: wholeNumber(values.loginCheckAfterDays),
     cancelAfterDays: wholeNumber(values.cancelAfterDays),
+    registerableDate: values.registerableDate,
     actualCancelDate: values.actualCancelDate,
     note: values.note.trim(),
     loginCheckLogs: editingId ? cloneData(data.records.find((item) => item.id === editingId)?.loginCheckLogs || []) : [],
@@ -495,6 +496,7 @@ function renderMatrix(records) {
             <span>${escapeHtml([contactText(item), item.date].filter(Boolean).join(" / "))}</span>
             <span>${escapeHtml(loginCheckText(item))}</span>
             <span>${escapeHtml(cancelText(item))}</span>
+            <span>${escapeHtml(registerableText(item))}</span>
             <span>${escapeHtml(actualCancelText(item))}</span>
             <span class="manual-note">${escapeHtml(item.note || "")}</span>
           </div>`).join("");
@@ -589,6 +591,7 @@ function renderRecords(records) {
         item.date,
         loginCheckText(item),
         cancelText(item),
+        registerableText(item),
         actualCancelText(item),
       ].filter(Boolean).join(" / ");
       node.querySelector(".record-note").textContent = item.note || "\u65e0\u5907\u6ce8";
@@ -732,7 +735,7 @@ function filteredRecords() {
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
-    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), item.actualCancelDate, item.note, statusLabel(item.status)]
+    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, item.note, statusLabel(item.status)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -762,6 +765,7 @@ function editRecord(id) {
   form.elements.date.value = item.date || "";
   form.elements.loginCheckAfterDays.value = item.loginCheckAfterDays || "";
   form.elements.cancelAfterDays.value = item.cancelAfterDays || "";
+  form.elements.registerableDate.value = item.registerableDate || "";
   form.elements.actualCancelDate.value = item.actualCancelDate || "";
   form.elements.note.value = item.note || "";
   form.querySelector(".primary-button").textContent = "\u66f4\u65b0\u8bb0\u5f55";
@@ -837,6 +841,7 @@ function copyRecordTemplate(id) {
     date: item.date,
     loginCheckAfterDays: item.loginCheckAfterDays,
     cancelAfterDays: item.cancelAfterDays,
+    registerableDate: item.registerableDate,
     actualCancelDate: item.actualCancelDate,
     note: item.note,
     loginCheckLogs: cloneData(item.loginCheckLogs || []),
@@ -963,6 +968,7 @@ function clearForm() {
   form.reset();
   setContactRows([]);
   form.elements.date.valueAsDate = new Date();
+  form.elements.registerableDate.value = "";
   form.elements.actualCancelDate.value = "";
   form.querySelector(".primary-button").textContent = "\u4fdd\u5b58\u8bb0\u5f55";
   renderFormCost();
@@ -1445,6 +1451,10 @@ function actualCancelText(item) {
   return item?.actualCancelDate ? `\u5b9e\u9645\u6ce8\u9500\uff1a${item.actualCancelDate}` : "";
 }
 
+function registerableText(item) {
+  return item?.registerableDate ? `\u53ef\u6ce8\u518c\uff1a${item.registerableDate}` : "";
+}
+
 function loginCheckState(item) {
   const days = wholeNumber(item?.loginCheckAfterDays);
   if (!item?.date || !days) return { dueDate: "", isDue: false };
@@ -1599,6 +1609,7 @@ function normalizeData(next) {
       loginCheckLogs: Array.isArray(item.loginCheckLogs) ? item.loginCheckLogs : [],
       loginCheckAfterDays: wholeNumber(item.loginCheckAfterDays),
       cancelAfterDays: wholeNumber(item.cancelAfterDays),
+      registerableDate: item.registerableDate || "",
       actualCancelDate: item.actualCancelDate || "",
     })),
   };
