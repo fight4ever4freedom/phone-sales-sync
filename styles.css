@@ -611,6 +611,11 @@ td:first-child {
   background: var(--own-blocked);
 }
 
+.cell.sold-blocked,
+.cell-entry.sold-blocked {
+  background: var(--own-blocked);
+}
+
 .cell.review,
 .cell-entry.review {
   background: var(--review);
@@ -862,6 +867,10 @@ td:first-child {
 }
 
 .badge.own-blocked {
+  background: var(--own-blocked);
+}
+
+.badge.sold-blocked {
   background: var(--own-blocked);
 }
 
