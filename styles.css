@@ -500,6 +500,7 @@ td:first-child {
 .cell-add,
 .cell-paste,
 .entry-copy,
+.entry-delete,
 .entry-login-check,
 .phone-copy {
   border: 1px dashed var(--line);
@@ -517,6 +518,17 @@ td:first-child {
   left: 4px;
   min-height: 22px;
   padding: 0 6px;
+}
+
+.entry-delete {
+  position: absolute;
+  top: 4px;
+  left: 48px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-style: solid;
+  border-color: #ba3b35;
+  color: #9f2c27;
 }
 
 .entry-login-check {

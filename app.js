@@ -481,6 +481,7 @@ function renderMatrix(records) {
         }
         const entries = items.map((item) => `<div class="cell-entry ${statusTone(item.status)}" data-record="${item.id}">
             <button class="entry-copy" type="button" data-record="${item.id}" title="\u590d\u5236\u8fd9\u6761\u8bb0\u5f55">\u590d\u5236</button>
+            <button class="entry-delete" type="button" data-record="${item.id}" title="\u5220\u9664\u8fd9\u6761\u8bb0\u5f55">\u5220\u9664</button>
             ${loginCheckNeedsAction(item) ? `<button class="entry-login-check" type="button" data-record="${item.id}" title="\u586b\u5199\u767b\u5f55\u540e\u60c5\u51b5">\u53ef\u767b\u5f55</button>` : ""}
             <strong>${escapeHtml(statusLabel(item.status))}${item.price ? ` · ${currency(item.price)}` : ""}</strong>
             <span>${escapeHtml([contactText(item), item.date].filter(Boolean).join(" / "))}</span>
@@ -503,6 +504,12 @@ function renderMatrix(records) {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       copyRecordTemplate(button.dataset.record);
+    });
+  });
+  els.matrixTable.querySelectorAll(".entry-delete").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteRecord(button.dataset.record);
     });
   });
   els.matrixTable.querySelectorAll(".entry-login-check").forEach((button) => {
@@ -771,6 +778,7 @@ function fillPhoneFields(phone) {
 }
 
 function deleteRecord(id) {
+  if (!confirm("\u786e\u5b9a\u5220\u9664\u8fd9\u6761\u77e9\u9635\u8bb0\u5f55\uff1f")) return;
   pushUndo();
   data.records = data.records.filter((item) => item.id !== id);
   persist();
