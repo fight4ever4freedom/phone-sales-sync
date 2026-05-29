@@ -613,6 +613,11 @@ td:first-child {
   white-space: pre-line;
 }
 
+.cell-entry .manual-note {
+  color: #7d2e67;
+  font-weight: 700;
+}
+
 .record-list,
 .phone-list,
 .people-list {

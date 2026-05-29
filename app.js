@@ -486,7 +486,7 @@ function renderMatrix(records) {
             <span>${escapeHtml(loginCheckText(item))}</span>
             <span>${escapeHtml(cancelText(item))}</span>
             <span>${escapeHtml(actualCancelText(item))}</span>
-            <span>${escapeHtml(item.note || "")}</span>
+            <span class="manual-note">${escapeHtml(item.note || "")}</span>
           </div>`).join("");
         return `<td><div class="cell filled">${entries}<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div></div></td>`;
       });
