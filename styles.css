@@ -565,6 +565,11 @@ td:first-child {
   justify-items: center;
 }
 
+.matrix-head span {
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .phone-row-move {
   border: 1px solid var(--line);
   border-radius: 6px;
