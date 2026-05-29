@@ -20,6 +20,7 @@ const statuses = [
   { value: "sold_blocked", label: "\u5df2\u552e\u5df2\u5c01\u7981", tone: "sold-blocked" },
   { value: "sold_verify", label: "\u5df2\u552e\u8df3\u9a8c\u8bc1", tone: "review" },
   { value: "sold_realname", label: "\u5df2\u552e\u88ab\u5b9e\u540d", tone: "realname-blocked" },
+  { value: "testing", label: "\u5f85\u6d4b\u8bd5", tone: "review" },
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
   { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "registerable" },
   { value: "cancelled_registered", label: "\u5df2\u6ce8\u9500\u5df2\u6ce8\u518c", tone: "registered" },
@@ -81,6 +82,7 @@ const els = {
   loginCheckDueCount: document.querySelector("#loginCheckDueCount"),
   cancelDueCount: document.querySelector("#cancelDueCount"),
   formTotalCost: document.querySelector("#formTotalCost"),
+  priceLabel: document.querySelector("#priceLabel"),
   formLoginCheckHint: document.querySelector("#formLoginCheckHint"),
   formCancelHint: document.querySelector("#formCancelHint"),
   phoneOptions: document.querySelector("#phoneOptions"),
@@ -208,6 +210,7 @@ function bindEvents() {
   form.elements.date.addEventListener("input", renderReminderHints);
   form.elements.loginCheckAfterDays.addEventListener("input", renderFormLoginCheckHint);
   form.elements.cancelAfterDays.addEventListener("input", renderFormCancelHint);
+  form.elements.status.addEventListener("change", updatePriceLabel);
   form.elements.phone.addEventListener("change", () => selectPhoneProfile(form.elements.phone.value));
   form.elements.phone.addEventListener("blur", () => selectPhoneProfile(form.elements.phone.value));
   els.searchInput.addEventListener("input", render);
@@ -257,7 +260,8 @@ function saveRecord(event) {
     phoneId: phone.id,
     platform: values.platform,
     status: values.status,
-    price: Number(values.price || 0),
+    price: values.status === "testing" ? 0 : Number(values.price || 0),
+    statusNote: values.status === "testing" ? values.price.trim() : "",
     contacts,
     contactPlatforms: contacts.map((item) => item.platform),
     contactPlatform: contacts[0]?.platform || "",
@@ -498,6 +502,7 @@ function renderMatrix(records) {
             <span>${escapeHtml(cancelText(item))}</span>
             <span>${escapeHtml(registerableText(item))}</span>
             <span>${escapeHtml(actualCancelText(item))}</span>
+            <span class="manual-note">${escapeHtml(statusNoteText(item))}</span>
             <span class="manual-note">${escapeHtml(item.note || "")}</span>
           </div>`).join("");
         return `<td><div class="cell filled">${entries}<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div></div></td>`;
@@ -593,6 +598,7 @@ function renderRecords(records) {
         cancelText(item),
         registerableText(item),
         actualCancelText(item),
+        statusNoteText(item),
       ].filter(Boolean).join(" / ");
       node.querySelector(".record-note").textContent = item.note || "\u65e0\u5907\u6ce8";
       const badge = node.querySelector(".badge");
@@ -735,7 +741,7 @@ function filteredRecords() {
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
-    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, item.note, statusLabel(item.status)]
+    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -760,7 +766,7 @@ function editRecord(id) {
   fillPhoneFields(phone);
   form.elements.platform.value = item.platform;
   form.elements.status.value = normalizeStatus(item.status);
-  form.elements.price.value = item.price || "";
+  form.elements.price.value = normalizeStatus(item.status) === "testing" ? item.statusNote || "" : item.price || "";
   setContactRows(contactEntries(item));
   form.elements.date.value = item.date || "";
   form.elements.loginCheckAfterDays.value = item.loginCheckAfterDays || "";
@@ -771,6 +777,7 @@ function editRecord(id) {
   form.querySelector(".primary-button").textContent = "\u66f4\u65b0\u8bb0\u5f55";
   renderFormCost();
   renderReminderHints();
+  updatePriceLabel();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -834,6 +841,7 @@ function copyRecordTemplate(id) {
   copiedRecord = {
     status: normalizeStatus(item.status),
     price: item.price,
+    statusNote: item.statusNote || "",
     contacts: cloneData(contactEntries(item)),
     contactPlatforms: cloneData(contactEntries(item).map((contact) => contact.platform)),
     contactPlatform: contactEntries(item)[0]?.platform || "",
@@ -973,6 +981,7 @@ function clearForm() {
   form.querySelector(".primary-button").textContent = "\u4fdd\u5b58\u8bb0\u5f55";
   renderFormCost();
   renderReminderHints();
+  updatePriceLabel();
 }
 
 function pushUndo() {
@@ -1459,6 +1468,10 @@ function actualCancelText(item) {
   return item?.actualCancelDate ? `\u5b9e\u9645\u6ce8\u9500\uff1a${item.actualCancelDate}` : "";
 }
 
+function statusNoteText(item) {
+  return item?.statusNote ? `\u5907\u6ce8\uff1a${item.statusNote}` : "";
+}
+
 function registerableText(item) {
   return item?.registerableDate ? `\u53ef\u6ce8\u518c\uff1a${item.registerableDate}` : "";
 }
@@ -1579,6 +1592,13 @@ function renderFormCost() {
   els.formTotalCost.textContent = currency(total);
 }
 
+function updatePriceLabel() {
+  const isTesting = form.elements.status.value === "testing";
+  els.priceLabel.textContent = isTesting ? "\u5907\u6ce8" : "\u91d1\u989d";
+  form.elements.price.placeholder = isTesting ? "\u586b\u5199\u6d4b\u8bd5\u5907\u6ce8" : "70";
+  form.elements.price.inputMode = isTesting ? "text" : "decimal";
+}
+
 function normalizeData(next) {
   const mergedPlatforms = uniqueList([
     ...defaultPlatforms,
@@ -1614,6 +1634,7 @@ function normalizeData(next) {
             : [],
       contactPlatform: item.contactPlatform || (item.buyer ? inferContactPlatform(item.buyer) : ""),
       nickname: item.nickname || stripLegacyContact(item.buyer),
+      statusNote: item.statusNote || "",
       loginCheckLogs: Array.isArray(item.loginCheckLogs) ? item.loginCheckLogs : [],
       loginCheckAfterDays: wholeNumber(item.loginCheckAfterDays),
       cancelAfterDays: wholeNumber(item.cancelAfterDays),
