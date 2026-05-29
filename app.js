@@ -765,7 +765,7 @@ function filteredRecords() {
       .join(" ")
       .toLowerCase();
     return (!text || haystack.includes(text)) &&
-      (platform === "all" || item.platform === platform) &&
+      (!platform || item.platform === platform) &&
       (status === "all" || item.status === status);
   });
 }
