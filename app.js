@@ -825,7 +825,7 @@ function sortedMatrixPlatforms() {
 }
 
 function platformSoldIncome(platform) {
-  return recordsTotal(data.records.filter((item) => item.platform === platform && isSoldRecord(item)));
+  return recordsTotal(data.records.filter((item) => item.platform === platform && Number(item.price || 0)));
 }
 
 function copyRecordTemplate(id) {
