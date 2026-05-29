@@ -266,7 +266,7 @@ function saveRecord(event) {
   }
 
   if (isBlockedPhonePlatform(phone, values.platform)) {
-    alert("\u6ce8\u518c\u5361\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ\uff0c\u8fd9\u4e2a\u77e9\u9635\u683c\u65e0\u6cd5\u9009\u62e9\u3002");
+    alert(blockedPlatformText(phone, values.platform) + "\uff0c\u8fd9\u4e2a\u77e9\u9635\u683c\u65e0\u6cd5\u9009\u62e9\u3002");
     return;
   }
 
@@ -499,9 +499,10 @@ function renderMatrix(records) {
       <span>${escapeHtml(name)}</span>
     </div>
   </th>`).join("")}</tr>`;
-  const rows = data.phones
-    .filter((phone) => isActivePhone(phone) && phoneMatches(phone, records))
+  const visiblePhones = groupedMatrixPhones(data.phones.filter((phone) => isActivePhone(phone) && phoneMatches(phone, records)));
+  const rows = visiblePhones
     .map((phone) => {
+      if (phone.__group) return `<tr class="matrix-group-row"><td colspan="${matrixPlatforms.length + 1}">${escapeHtml(phone.label)}</td></tr>`;
       const cells = matrixPlatforms.map((platform) => {
         const items = recordsByPhonePlatform.get(`${phone.id}-${platform}`) || [];
         const blockedPlatform = isBlockedPhonePlatform(phone, platform);
@@ -853,6 +854,21 @@ function sortedMatrixPlatforms() {
     .map((item) => item.name);
 }
 
+function groupedMatrixPhones(phones) {
+  const groups = [
+    { label: "\u4e09\u7f51\u5385\u5361", items: [] },
+    { label: "\u6ce8\u518c\u5361", items: [] },
+    { label: "\u672a\u5206\u7c7b", items: [] },
+  ];
+  phones.forEach((phone) => {
+    const category = phone.cardCategory || inferCardCategory(phone.carrier);
+    if (category === "hall") groups[0].items.push(phone);
+    else if (category === "registration") groups[1].items.push(phone);
+    else groups[2].items.push(phone);
+  });
+  return groups.flatMap((group) => group.items.length ? [{ __group: true, label: group.label }, ...group.items] : []);
+}
+
 function platformSoldIncome(platform) {
   return recordsTotal(data.records.filter((item) => item.platform === platform && hasRecordPrice(item)));
 }
@@ -907,7 +923,7 @@ function pasteRecordTemplate(phoneNumber, platform) {
   const phone = phoneByNumber(phoneNumber);
   if (!phone) return;
   if (isBlockedPhonePlatform(phone, platform)) {
-    toast("\u6ce8\u518c\u5361\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ");
+    toast(blockedPlatformText(phone, platform));
     return;
   }
   pushUndo();
@@ -1433,16 +1449,17 @@ function cardCategoryLabel(value) {
   return "";
 }
 
-function isQQPlatform(platform) {
-  return String(platform || "").trim().toLowerCase() === "qq";
+function isRegistrationCardBlockedPlatform(platform) {
+  const name = String(platform || "").trim().toLowerCase();
+  return name === "qq" || name === "\u5c0f\u7ea2\u4e66";
 }
 
 function isBlockedPhonePlatform(phone, platform) {
-  return isRegistrationCard(phone) && isQQPlatform(platform);
+  return isRegistrationCard(phone) && isRegistrationCardBlockedPlatform(platform);
 }
 
 function blockedPlatformText(phone, platform) {
-  if (isBlockedPhonePlatform(phone, platform)) return "\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c QQ";
+  if (isBlockedPhonePlatform(phone, platform)) return `\u6ce8\u518c\u5361\u9ed8\u8ba4\u4e0d\u80fd\u6ce8\u518c ${platform}`;
   return "";
 }
 

@@ -461,6 +461,19 @@ td:first-child {
   font-weight: 700;
 }
 
+.matrix-group-row td {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #15202b;
+  color: white;
+  font-size: 15px;
+  letter-spacing: 0;
+  padding: 8px 12px;
+  border-top: 4px solid #15202b;
+  border-bottom: 4px solid #15202b;
+}
+
 .cell {
   border-radius: 6px;
   min-height: 54px;
@@ -482,6 +495,22 @@ td:first-child {
   display: grid;
   gap: 6px;
   place-items: center;
+}
+
+.cell.blocked-platform {
+  color: #8a6a12;
+  background: #fff2a8;
+  border: 1px dashed #d6aa19;
+  cursor: not-allowed;
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  text-align: center;
+}
+
+.cell.blocked-platform span {
+  color: #8a6a12;
+  font-size: 12px;
 }
 
 .cell-entry {
