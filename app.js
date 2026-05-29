@@ -24,7 +24,7 @@ const statuses = [
   { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "available" },
   { value: "own", label: "\u81ea\u7528", tone: "own" },
   { value: "own_blocked", label: "\u81ea\u7528\u5df2\u5c01\u7981", tone: "own-blocked" },
-  { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "blocked" },
+  { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "cannot-register" },
 ];
 
 const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1"];
