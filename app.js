@@ -69,6 +69,7 @@ let platforms = data.platforms || [...defaultPlatforms];
 let editingId = null;
 let copiedRecord = null;
 let selectedPhoneLookupId = "";
+let githubSyncTimer = null;
 const undoStack = [];
 
 const form = document.querySelector("#recordForm");
@@ -90,7 +91,10 @@ const els = {
   statusSelect: form.elements.status,
   platformFilter: document.querySelector("#platformFilter"),
   platformFilterOptions: document.querySelector("#platformFilterOptions"),
+  phoneFilter: document.querySelector("#phoneFilter"),
+  phoneFilterOptions: document.querySelector("#phoneFilterOptions"),
   statusFilter: document.querySelector("#statusFilter"),
+  syncStatus: document.querySelector("#syncStatus"),
   searchInput: document.querySelector("#searchInput"),
   matrixTable: document.querySelector("#matrixTable"),
   recordList: document.querySelector("#recordList"),
@@ -137,13 +141,14 @@ async function boot() {
   data = await loadData();
   platforms = data.platforms || [...defaultPlatforms];
   init();
-  if (syncEnabled) persist();
+  persistLocalOnly();
 }
 
 function fillOptions() {
   els.platformSelect.innerHTML = platforms.map((name) => option(name)).join("");
   els.statusSelect.innerHTML = statuses.map((item) => option(item.label, item.value)).join("");
   els.platformFilterOptions.innerHTML = platforms.map((name) => `<option value="${escapeAttr(name)}"></option>`).join("");
+  els.phoneFilterOptions.innerHTML = data.phones.map((phone) => `<option value="${escapeAttr(phone.number)}">${escapeHtml(matrixPhoneSummary(phone))}</option>`).join("");
   els.statusFilter.innerHTML = option("\u5168\u90e8\u72b6\u6001", "all") + statuses.map((item) => option(item.label, item.value)).join("");
 }
 
@@ -214,6 +219,8 @@ function bindEvents() {
   form.elements.phone.addEventListener("change", () => selectPhoneProfile(form.elements.phone.value));
   form.elements.phone.addEventListener("blur", () => selectPhoneProfile(form.elements.phone.value));
   els.searchInput.addEventListener("input", render);
+  els.phoneFilter.addEventListener("input", render);
+  els.phoneFilter.addEventListener("change", render);
   els.platformFilter.addEventListener("input", render);
   els.platformFilter.addEventListener("change", render);
   els.statusFilter.addEventListener("change", render);
@@ -498,7 +505,12 @@ function renderMatrix(records) {
       <span>${escapeHtml(name)}</span>
     </div>
   </th>`).join("")}</tr>`;
-  const visiblePhones = groupedMatrixPhones(data.phones.filter((phone) => isActivePhone(phone) && phoneMatches(phone, records)));
+  const selectedPhone = selectedPhoneFilter();
+  const visiblePhones = groupedMatrixPhones(data.phones.filter((phone) =>
+    isActivePhone(phone) &&
+    (!selectedPhone || phone.id === selectedPhone.id) &&
+    phoneMatches(phone, records)
+  ));
   const rows = visiblePhones
     .map((phone) => {
       if (phone.__group) return `<tr class="matrix-group-row"><td colspan="${matrixPlatforms.length + 1}">${escapeHtml(phone.label)}</td></tr>`;
@@ -526,7 +538,7 @@ function renderMatrix(records) {
         const actions = blockedPlatform ? "" : `<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div>`;
         return `<td><div class="cell filled">${entries}${actions}</div></td>`;
       });
-      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div>${escapeHtml(phone.number)}<br><span>${escapeHtml(matrixPhoneSummary(phone))}</span></td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div><strong class="matrix-phone-number">${escapeHtml(phone.number)}</strong><span>${escapeHtml(matrixPhoneSummary(phone))}</span><span class="${phoneProfit(phone) < 0 ? "negative" : "profit"}">${escapeHtml(matrixPhoneProfitText(phone))}</span></td>${cells.join("")}</tr>`;
     })
     .join("");
 
@@ -757,6 +769,7 @@ function renderArchivedPhones(records) {
 function filteredRecords() {
   const text = els.searchInput.value.trim().toLowerCase();
   const platform = selectedPlatformFilter();
+  const phoneFilter = selectedPhoneFilter();
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
@@ -765,6 +778,7 @@ function filteredRecords() {
       .join(" ")
       .toLowerCase();
     return (!text || haystack.includes(text)) &&
+      (!phoneFilter || item.phoneId === phoneFilter.id) &&
       (!platform || item.platform === platform) &&
       (status === "all" || item.status === status);
   });
@@ -859,6 +873,11 @@ function matrixVisiblePlatforms() {
 function selectedPlatformFilter() {
   const value = els.platformFilter.value.trim();
   return platforms.includes(value) ? value : "";
+}
+
+function selectedPhoneFilter() {
+  const value = els.phoneFilter.value.trim();
+  return data.phones.find((phone) => phone.number === value) || null;
 }
 
 function groupedMatrixPhones(phones) {
@@ -1095,10 +1114,15 @@ async function loadData() {
 }
 
 function persist() {
+  persistLocalOnly();
+  setSyncStatus("\u672c\u5730\u5df2\u4fdd\u5b58");
+  if (syncEnabled) saveRemoteData();
+  scheduleGitHubSync();
+}
+
+function persistLocalOnly() {
   data.platforms = platforms;
   localStorage.setItem(storageKey, JSON.stringify(data));
-  if (syncEnabled) saveRemoteData();
-  saveGitHubData();
 }
 
 async function setupGitHubSync() {
@@ -1114,6 +1138,7 @@ async function setupGitHubSync() {
     token: token.trim(),
     path: "data.json",
   }));
+  setSyncStatus("\u5df2\u914d\u7f6e\u540c\u6b65", "ok");
   const remote = await loadGitHubData();
   if (remote) {
     if (confirm("\u5df2\u627e\u5230 GitHub \u4e0a\u7684\u6570\u636e\uff0c\u662f\u5426\u62c9\u53d6\u5e76\u8986\u76d6\u5f53\u524d\u9875\u9762\u6570\u636e\uff1f")) {
@@ -1138,6 +1163,23 @@ function getGitHubConfig() {
   }
 }
 
+function setSyncStatus(message, tone = "") {
+  if (!els.syncStatus) return;
+  els.syncStatus.textContent = message;
+  els.syncStatus.className = `sync-status ${tone}`.trim();
+}
+
+function scheduleGitHubSync() {
+  const config = getGitHubConfig();
+  if (!config.repo || !config.token) {
+    setSyncStatus("\u672c\u5730\u5df2\u4fdd\u5b58\uff0c\u672a\u914d\u7f6e\u540c\u6b65", "warn");
+    return;
+  }
+  clearTimeout(githubSyncTimer);
+  setSyncStatus("3\u79d2\u540e\u81ea\u52a8\u540c\u6b65", "pending");
+  githubSyncTimer = setTimeout(() => saveGitHubData(false), 3000);
+}
+
 async function loadGitHubData() {
   const config = getGitHubConfig();
   if (!config.repo || !config.token) return null;
@@ -1158,8 +1200,13 @@ async function loadGitHubData() {
 
 async function saveGitHubData(showErrors = false) {
   const config = getGitHubConfig();
-  if (!config.repo || !config.token) return;
+  if (!config.repo || !config.token) {
+    setSyncStatus("\u672c\u5730\u5df2\u4fdd\u5b58\uff0c\u672a\u914d\u7f6e\u540c\u6b65", "warn");
+    return false;
+  }
   try {
+    clearTimeout(githubSyncTimer);
+    setSyncStatus("\u6b63\u5728\u540c\u6b65", "pending");
     const current = await fetch(gitHubContentUrl(config), {
       cache: "no-store",
       headers: gitHubHeaders(config),
@@ -1181,9 +1228,17 @@ async function saveGitHubData(showErrors = false) {
       },
       body: JSON.stringify(body),
     });
-    if (!response.ok && showErrors) alert("\u4e0a\u4f20 GitHub \u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 Token \u6743\u9650\u3002");
+    if (!response.ok) {
+      setSyncStatus("\u540c\u6b65\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5Token", "error");
+      if (showErrors) alert("\u4e0a\u4f20 GitHub \u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 Token \u6743\u9650\u3002");
+      return false;
+    }
+    setSyncStatus(`\u5df2\u540c\u6b65 ${new Date().toLocaleTimeString("zh-CN", { hour12: false })}`, "ok");
+    return true;
   } catch {
+    setSyncStatus("\u540c\u6b65\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u6216Token", "error");
     if (showErrors) alert("\u4e0a\u4f20 GitHub \u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u3002");
+    return false;
   }
 }
 
@@ -1431,6 +1486,15 @@ function phoneSummary(phone) {
 
 function matrixPhoneSummary(phone) {
   return [phone?.personName || "", phone?.carrier || ""].filter(Boolean).join(" · ");
+}
+
+function phoneProfit(phone) {
+  const income = recordsTotal(data.records.filter((item) => item.phoneId === phone?.id && hasRecordPrice(item)));
+  return income - phoneTotalCost(phone);
+}
+
+function matrixPhoneProfitText(phone) {
+  return `\u5229\u6da6 ${currency(phoneProfit(phone))}`;
 }
 
 function applyCarrierCategory() {

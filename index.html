@@ -20,6 +20,7 @@
             <input id="importFile" type="file" accept="application/json" hidden />
           </label>
           <button class="ghost-button" id="githubSyncBtn">GitHub&#21516;&#27493;</button>
+          <span class="sync-status" id="syncStatus">&#26412;&#22320;&#24050;&#20445;&#23384;</span>
           <button class="ghost-button" id="resetDemoBtn">&#24674;&#22797;&#31034;&#20363;</button>
         </div>
       </header>
@@ -191,6 +192,8 @@
               <span>⌕</span>
               <input id="searchInput" placeholder="&#25628;&#32034;&#25163;&#26426;&#21495;&#12289;APP&#12289;&#25104;&#20132;&#24179;&#21488;&#12289;&#26165;&#31216;&#12289;&#22791;&#27880;" />
             </div>
+            <input id="phoneFilter" list="phoneFilterOptions" placeholder="&#20840;&#37096;&#25163;&#26426;&#21495;" aria-label="phone filter" />
+            <datalist id="phoneFilterOptions"></datalist>
             <select id="statusFilter" aria-label="status filter"></select>
             <input id="platformFilter" list="platformFilterOptions" placeholder="&#20840;&#37096;APP" aria-label="APP filter" />
             <datalist id="platformFilterOptions"></datalist>
