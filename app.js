@@ -1258,10 +1258,11 @@ function wholeNumber(value) {
 }
 
 function phoneTotalCost(phone) {
+  const rentMonths = phoneBillingMonths(phone);
   return sum([
     phone?.cardFee,
     phone?.initialRecharge,
-    phone?.monthlyRent,
+    moneyValue(phone?.monthlyRent) * rentMonths,
     phone?.personCost,
   ]);
 }
@@ -1274,9 +1275,35 @@ function costBreakdown(phone) {
   return [
     `\u5361\u8d39 ${currency(phone.cardFee)}`,
     `\u9996\u5145 ${currency(phone.initialRecharge)}`,
-    `\u6708\u79df ${currency(phone.monthlyRent)}`,
+    `\u6708\u79df ${currency(phone.monthlyRent)} \u00d7 ${phoneBillingMonths(phone)}\u4e2a\u6708 = ${currency(moneyValue(phone.monthlyRent) * phoneBillingMonths(phone))}`,
     `\u4eba\u5458\u6210\u672c ${currency(phone.personCost)}`,
   ].join(" / ");
+}
+
+function phoneBillingMonths(phone) {
+  if (!phone || !moneyValue(phone.monthlyRent)) return 0;
+  const start = parseDateSafe(phoneActivationDate(phone));
+  if (!start) return 1;
+  const end = parseDateSafe(phoneCancelDate(phone) || formatDate(startOfToday())) || start;
+  if (end.getTime() < start.getTime()) return 1;
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+}
+
+function phoneActivationDate(phone) {
+  return data.records
+    .filter((item) => item.phoneId === phone?.id && item.date)
+    .map((item) => item.date)
+    .sort()[0] || "";
+}
+
+function phoneCancelDate(phone) {
+  const actualDates = data.records
+    .filter((item) => item.phoneId === phone?.id && item.actualCancelDate)
+    .map((item) => item.actualCancelDate)
+    .sort();
+  if (actualDates.length) return actualDates[actualDates.length - 1];
+  if (phone?.phoneStatus === "cancelled" && phone.archivedAt) return String(phone.archivedAt).slice(0, 10);
+  return "";
 }
 
 function phoneSummary(phone) {
@@ -1401,6 +1428,12 @@ function addDays(dateText, days) {
 function parseDate(dateText) {
   const [year, month, day] = String(dateText).split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function parseDateSafe(dateText) {
+  if (!dateText) return null;
+  const date = parseDate(dateText);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function startOfToday() {
