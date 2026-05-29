@@ -107,6 +107,10 @@ const els = {
   monthFinanceTable: document.querySelector("#monthFinanceTable"),
   appFinanceTable: document.querySelector("#appFinanceTable"),
   phoneFinanceTable: document.querySelector("#phoneFinanceTable"),
+  customerCount: document.querySelector("#customerCount"),
+  customerPurchaseCount: document.querySelector("#customerPurchaseCount"),
+  customerTotalAmount: document.querySelector("#customerTotalAmount"),
+  customerAnalysisTable: document.querySelector("#customerAnalysisTable"),
   template: document.querySelector("#recordTemplate"),
 };
 
@@ -321,6 +325,7 @@ function render() {
   renderPeopleStats();
   renderArchivedPhones(visible);
   renderFinance();
+  renderCustomerAnalysis();
 }
 
 function renderStats() {
@@ -439,9 +444,112 @@ function renderPhoneFinance() {
   );
 }
 
-function financeTable(headers, rows, colspan) {
+function renderCustomerAnalysis() {
+  const rows = customerAnalysisRows();
+  const purchaseCount = sum(rows.map((row) => row.count));
+  const totalAmount = sum(rows.map((row) => row.total));
+
+  els.customerCount.textContent = rows.length;
+  els.customerPurchaseCount.textContent = purchaseCount;
+  els.customerTotalAmount.textContent = currency(totalAmount);
+  els.customerAnalysisTable.innerHTML = financeTable(
+    ["\u5ba2\u6237\u6635\u79f0", "\u6210\u4ea4\u5e73\u53f0", "\u9996\u6b21\u6d88\u8d39", "\u6700\u540e\u6d88\u8d39", "\u65f6\u95f4\u8de8\u5ea6", "\u6b21\u6570", "\u6d88\u8d39\u9891\u7387", "\u6d88\u8d39\u603b\u91d1\u989d"],
+    rows.map((row) => [
+      row.nickname,
+      row.platforms.join(" / "),
+      row.firstDate || "\u672a\u586b\u5199",
+      row.lastDate || "\u672a\u586b\u5199",
+      customerPeriodText(row),
+      row.count,
+      customerFrequencyText(row),
+      currency(row.total),
+    ]),
+    8,
+    "\u6682\u65e0\u5ba2\u6237\u6d88\u8d39\u6570\u636e",
+  );
+}
+
+function customerAnalysisRows() {
+  const customers = new Map();
+  paidRecords().forEach((item) => {
+    const contacts = customerContacts(item);
+    contacts.forEach((contact) => {
+      const nickname = contact.nickname || "\u672a\u586b\u5199\u6635\u79f0";
+      if (!customers.has(nickname)) {
+        customers.set(nickname, {
+          nickname,
+          platforms: new Set(),
+          dates: [],
+          count: 0,
+          total: 0,
+        });
+      }
+      const row = customers.get(nickname);
+      if (contact.platform) row.platforms.add(contact.platform);
+      const date = recordDate(item);
+      if (date) row.dates.push(date);
+      row.count += 1;
+      row.total += Number(item.price || 0);
+    });
+  });
+
+  return [...customers.values()]
+    .map((row) => {
+      const dates = row.dates.sort();
+      return {
+        ...row,
+        platforms: [...row.platforms].sort((a, b) => a.localeCompare(b, "zh-CN")),
+        firstDate: dates[0] || "",
+        lastDate: dates[dates.length - 1] || "",
+      };
+    })
+    .sort((a, b) => b.total - a.total || b.count - a.count || a.nickname.localeCompare(b.nickname, "zh-CN"));
+}
+
+function customerContacts(item) {
+  const contacts = contactEntries(item).filter((contact) => contact.nickname || contact.platform);
+  if (contacts.length) return contacts;
+  return [{ platform: item.contactPlatform || "", nickname: item.nickname || "" }];
+}
+
+function customerPeriodText(row) {
+  if (!row.firstDate || !row.lastDate) return "\u672a\u586b\u5199\u65e5\u671f";
+  const days = daysBetween(row.firstDate, row.lastDate) + 1;
+  if (days <= 1) return "\u540c\u4e00\u5929";
+  return `${days}\u5929`;
+}
+
+function customerFrequencyText(row) {
+  if (!row.count) return "-";
+  if (!row.firstDate || !row.lastDate) return `${row.count}\u6b21`;
+  const days = daysBetween(row.firstDate, row.lastDate) + 1;
+  if (row.count === 1) return "\u9996\u6b21\u6d88\u8d39";
+  const averageDays = Math.max(1, days / row.count);
+  const monthlyAverage = row.count / Math.max(days / 30, 1);
+  return `\u7ea6${formatDecimal(averageDays)}\u5929/\u6b21 \u00b7 \u6708\u5747${formatDecimal(monthlyAverage)}\u6b21`;
+}
+
+function recordDate(item) {
+  if (item?.date) return item.date;
+  if (item?.updatedAt) return String(item.updatedAt).slice(0, 10);
+  return "";
+}
+
+function daysBetween(startDate, endDate) {
+  const start = parseDateSafe(startDate);
+  const end = parseDateSafe(endDate);
+  if (!start || !end) return 0;
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000));
+}
+
+function formatDecimal(value) {
+  const number = Number(value || 0);
+  return Number.isInteger(number) ? String(number) : number.toFixed(1);
+}
+
+function financeTable(headers, rows, colspan, emptyText = "\u6682\u65e0\u8d22\u52a1\u6570\u636e") {
   const head = `<tr>${headers.map((item) => `<th>${escapeHtml(item)}</th>`).join("")}</tr>`;
-  if (!rows.length) return `${head}<tr><td colspan="${colspan}" class="empty-state">\u6682\u65e0\u8d22\u52a1\u6570\u636e</td></tr>`;
+  if (!rows.length) return `${head}<tr><td colspan="${colspan}" class="empty-state">${escapeHtml(emptyText)}</td></tr>`;
   return head + rows.map((row) => `<tr>${row.map((item) => {
     if (typeof item === "object" && item.html) return `<td>${item.html}</td>`;
     return `<td>${escapeHtml(item)}</td>`;
