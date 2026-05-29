@@ -621,6 +621,11 @@ td:first-child {
   background: var(--own-blocked);
 }
 
+.cell.realname-blocked,
+.cell-entry.realname-blocked {
+  background: var(--own-blocked);
+}
+
 .cell.review,
 .cell-entry.review {
   background: var(--review);
@@ -880,6 +885,10 @@ td:first-child {
 }
 
 .badge.cannot-register {
+  background: var(--own-blocked);
+}
+
+.badge.realname-blocked {
   background: var(--own-blocked);
 }
 
