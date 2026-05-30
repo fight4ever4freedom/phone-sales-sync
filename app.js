@@ -16,7 +16,7 @@ const defaultPlatforms = [
 ];
 
 const statuses = [
-  { value: "sold_pending_cancel", label: "\u5df2\u552e\u5f85\u6ce8\u9500", tone: "sold" },
+  { value: "sold_pending_cancel", label: "\u53ef\u6ce8\u9500", tone: "sold" },
   { value: "sold_blocked", label: "\u5df2\u552e\u5df2\u5c01\u7981", tone: "sold-blocked" },
   { value: "sold_verify", label: "\u5df2\u552e\u8df3\u9a8c\u8bc1", tone: "verify-blocked" },
   { value: "sold_realname", label: "\u5df2\u552e\u88ab\u5b9e\u540d", tone: "realname-blocked" },
