@@ -70,6 +70,7 @@ let editingId = null;
 let copiedRecord = null;
 let selectedPhoneLookupId = "";
 let githubSyncTimer = null;
+let matrixQuickFilter = "";
 const undoStack = [];
 
 const form = document.querySelector("#recordForm");
@@ -228,6 +229,14 @@ function bindEvents() {
   els.platformFilter.addEventListener("input", render);
   els.platformFilter.addEventListener("change", render);
   els.statusFilter.addEventListener("change", render);
+  document.querySelectorAll("[data-quick-filter]").forEach((item) => {
+    item.addEventListener("click", () => toggleMatrixQuickFilter(item.dataset.quickFilter));
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleMatrixQuickFilter(item.dataset.quickFilter);
+    });
+  });
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => switchView(button.dataset.view));
   });
@@ -330,12 +339,15 @@ function render() {
 
 function renderStats() {
   els.phoneCount.textContent = data.phones.filter(isActivePhone).length;
-  els.soldTotal.textContent = data.records.filter((item) => item.actualCancelDate).length;
+  els.soldTotal.textContent = cancelableRecords().length;
   els.availableCount.textContent = loginCheckDueRecords().length;
   els.blockedCount.textContent = currency(monthSoldTotal());
   els.costTotal.textContent = currency(sum(data.phones.map(phoneTotalCost)));
   els.loginCheckDueCount.textContent = loginCheckDueRecords().length;
   els.cancelDueCount.textContent = 0;
+  document.querySelectorAll("[data-quick-filter]").forEach((item) => {
+    item.classList.toggle("active", matrixQuickFilter === item.dataset.quickFilter);
+  });
 }
 
 function renderFinance() {
@@ -888,15 +900,43 @@ function filteredRecords() {
     return (!text || haystack.includes(text)) &&
       (!phoneFilter || item.phoneId === phoneFilter.id) &&
       (!platform || item.platform === platform) &&
-      (status === "all" || item.status === status);
+      (status === "all" || item.status === status) &&
+      recordMatchesMatrixQuickFilter(item);
   });
 }
 
 function phoneMatches(phone, records) {
   const text = els.searchInput.value.trim().toLowerCase();
+  const recordFilterActive = Boolean(selectedPlatformFilter() || matrixQuickFilter || els.statusFilter.value !== "all");
+  const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
+  const phoneTextMatches = [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(text);
+  if (recordFilterActive && !hasVisibleRecord) return false;
   if (!text) return true;
-  return [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo].filter(Boolean).join(" ").toLowerCase().includes(text) ||
-    records.some((item) => item.phoneId === phone.id);
+  return phoneTextMatches || hasVisibleRecord;
+}
+
+function toggleMatrixQuickFilter(filter) {
+  matrixQuickFilter = matrixQuickFilter === filter ? "" : filter;
+  if (matrixQuickFilter) {
+    els.searchInput.value = "";
+    els.phoneFilter.value = "";
+    els.platformFilter.value = "";
+    els.statusFilter.value = "all";
+  }
+  switchView("matrix");
+  render();
+  const label = matrixQuickFilter === "cancelable" ? "\u53ef\u6ce8\u9500" : matrixQuickFilter === "login" ? "\u53ef\u767b\u5f55" : "";
+  toast(label ? `\u5df2\u5728\u77e9\u9635\u663e\u793a${label}\u8d26\u53f7` : "\u5df2\u53d6\u6d88\u5feb\u6377\u7b5b\u9009");
+}
+
+function recordMatchesMatrixQuickFilter(item) {
+  if (matrixQuickFilter === "cancelable") return isCancelableRecord(item);
+  if (matrixQuickFilter === "login") return loginCheckNeedsAction(item);
+  return true;
 }
 
 function editRecord(id) {
@@ -1696,6 +1736,14 @@ function contactNicknameField(platform) {
 
 function loginCheckDueRecords() {
   return data.records.filter(loginCheckNeedsAction);
+}
+
+function cancelableRecords() {
+  return data.records.filter(isCancelableRecord);
+}
+
+function isCancelableRecord(item) {
+  return normalizeStatus(item?.status) === "sold_pending_cancel";
 }
 
 function loginCheckNeedsAction(item) {

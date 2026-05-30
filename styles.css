@@ -186,6 +186,29 @@ h2 {
   padding: 14px 16px;
 }
 
+.stats article.stat-action {
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.stats article.stat-action:hover,
+.stats article.stat-action:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px rgba(26, 91, 142, 0.12);
+  outline: none;
+}
+
+.stats article.stat-action.active {
+  border-color: var(--accent);
+  background: #eef7ff;
+  box-shadow: inset 0 0 0 1px rgba(26, 91, 142, 0.18);
+}
+
+.stats article.stat-action:active {
+  transform: translateY(1px);
+}
+
 .stats span {
   display: block;
   color: var(--muted);
