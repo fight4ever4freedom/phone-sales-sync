@@ -857,6 +857,22 @@ td:first-child span {
   font-size: 22px;
 }
 
+.recharge-control {
+  display: grid;
+  grid-template-columns: 160px minmax(180px, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 12px;
+}
+
+.recharge-control span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .phone-detail-list {
   display: grid;
   gap: 8px;
@@ -1093,6 +1109,7 @@ td:first-child span {
   }
 
   .device-grid,
+  .recharge-control,
   .phone-detail-list div {
     grid-template-columns: 1fr;
   }

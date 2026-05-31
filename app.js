@@ -271,6 +271,7 @@ function saveRecord(event) {
       cardCategory,
       deviceNo: values.deviceNo.trim(),
       slotNo: values.slotNo.trim(),
+      monthlyRecharges: {},
     };
     data.phones.push(phone);
   } else {
@@ -798,9 +799,14 @@ function renderPhones(records) {
   els.phoneList.querySelectorAll(".delete-phone").forEach((button) => {
     button.addEventListener("click", () => deletePhone(button.dataset.phoneId));
   });
+  els.phoneList.querySelectorAll(".phone-recharge-status").forEach((select) => {
+    select.addEventListener("change", () => updatePhoneRechargeStatus(select.dataset.phoneId, select.value));
+  });
 }
 
 function phoneLookupDetail(phone, recordCount) {
+  const rechargeMonth = currentMonth();
+  const rechargeStatus = monthlyRechargeStatus(phone, rechargeMonth);
   return `<article class="phone-card phone-lookup-card">
       <div class="phone-lookup-title">
         <strong>${escapeHtml(phone.number)}</strong>
@@ -816,10 +822,19 @@ function phoneLookupDetail(phone, recordCount) {
           <strong>${escapeHtml(phone.slotNo || "\u672a\u586b\u5199")}</strong>
         </article>
       </div>
+      <label class="recharge-control">
+        <span>\u672c\u6708\u5145\u503c\u60c5\u51b5\u00a0${escapeHtml(rechargeMonth)}</span>
+        <select class="phone-recharge-status" data-phone-id="${escapeAttr(phone.id)}">
+          ${rechargeStatusOption("", "\u672a\u8bb0\u5f55", rechargeStatus)}
+          ${rechargeStatusOption("unpaid", "\u672a\u5145\u503c", rechargeStatus)}
+          ${rechargeStatusOption("paid", "\u5df2\u5145\u503c", rechargeStatus)}
+        </select>
+      </label>
       <dl class="phone-detail-list">
         <div><dt>\u59d3\u540d</dt><dd>${escapeHtml(phone.personName || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u5361\u7c7b\u578b</dt><dd>${escapeHtml(cardCategoryLabel(phone.cardCategory || inferCardCategory(phone.carrier)))}</dd></div>
+        <div><dt>\u5145\u503c\u72b6\u6001</dt><dd>${escapeHtml(monthlyRechargeLabel(rechargeStatus))}</dd></div>
         <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
         <div><dt>\u603b\u6210\u672c</dt><dd>${currency(phoneTotalCost(phone))}</dd></div>
         <div><dt>\u5e73\u53f0\u8bb0\u5f55</dt><dd>\u5f53\u524d\u7b5b\u9009\u4e0b ${recordCount} \u6761</dd></div>
@@ -833,6 +848,39 @@ function phoneLookupDetail(phone, recordCount) {
 
 function phoneLookupLabel(phone) {
   return [phone.number, phone.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "", phone.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "", phone.carrier].filter(Boolean).join(" / ");
+}
+
+function rechargeStatusOption(value, label, selected) {
+  return `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+}
+
+function updatePhoneRechargeStatus(phoneId, status) {
+  const phone = phoneById(phoneId);
+  if (!phone) return;
+  pushUndo();
+  const month = currentMonth();
+  phone.monthlyRecharges = normalizeMonthlyRecharges(phone.monthlyRecharges);
+  if (status) {
+    phone.monthlyRecharges[month] = {
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    delete phone.monthlyRecharges[month];
+  }
+  persist();
+  render();
+  toast(status ? `\u5df2\u8bb0\u5f55${month}\u5145\u503c\u72b6\u6001` : `\u5df2\u6e05\u9664${month}\u5145\u503c\u72b6\u6001`);
+}
+
+function monthlyRechargeStatus(phone, month = currentMonth()) {
+  return normalizeMonthlyRecharges(phone?.monthlyRecharges)[month]?.status || "";
+}
+
+function monthlyRechargeLabel(status) {
+  if (status === "paid") return "\u5df2\u5145\u503c";
+  if (status === "unpaid") return "\u672a\u5145\u503c";
+  return "\u672a\u8bb0\u5f55";
 }
 
 function renderPeopleStats() {
@@ -1891,6 +1939,7 @@ function normalizeData(next) {
       phoneStatus: phone.phoneStatus || "active",
       blockReason: phone.blockReason || "",
       archivedAt: phone.archivedAt || "",
+      monthlyRecharges: normalizeMonthlyRecharges(phone.monthlyRecharges || phone.rechargeMonths),
     })),
     records: next.records.map((item) => ({
       ...item,
@@ -1916,6 +1965,18 @@ function normalizeData(next) {
 
 function uniqueList(items) {
   return [...new Set(items.map((item) => String(item).trim()).filter(Boolean))];
+}
+
+function normalizeMonthlyRecharges(value) {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(Object.entries(value).map(([month, item]) => {
+    const rawStatus = typeof item === "string" ? item : item?.status;
+    const status = rawStatus === "paid" || rawStatus === "unpaid" ? rawStatus : "";
+    return [month, {
+      status,
+      updatedAt: typeof item === "object" && item?.updatedAt ? item.updatedAt : "",
+    }];
+  }).filter(([, item]) => item.status));
 }
 
 function currency(value) {
