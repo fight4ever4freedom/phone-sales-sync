@@ -634,7 +634,7 @@ function renderMatrix(records) {
   const visiblePhones = groupedMatrixPhones(data.phones.filter((phone) =>
     isActivePhone(phone) &&
     (!selectedPhone || phone.id === selectedPhone.id) &&
-    phoneMatches(phone, records)
+    matrixPhoneMatches(phone, records)
   ));
   const rows = visiblePhones
     .map((phone) => {
@@ -950,7 +950,7 @@ function filteredRecords() {
   const platform = selectedPlatformFilter();
   const phoneFilter = selectedPhoneFilter();
   const carrier = selectedCarrierFilter();
-  const status = els.statusFilter.value;
+  const status = selectedStatusFilter();
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
     const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
@@ -970,7 +970,7 @@ function phoneMatches(phone, records) {
   const text = els.searchInput.value.trim().toLowerCase();
   const carrier = selectedCarrierFilter();
   if (carrier && phone?.carrier !== carrier) return false;
-  const recordFilterActive = Boolean(matrixQuickFilter || els.statusFilter.value !== "all");
+  const recordFilterActive = Boolean(matrixQuickFilter || selectedStatusFilter() !== "all");
   const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
   const phoneTextMatches = [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
     .filter(Boolean)
@@ -980,6 +980,21 @@ function phoneMatches(phone, records) {
   if (recordFilterActive && !hasVisibleRecord) return false;
   if (!text) return true;
   return phoneTextMatches || hasVisibleRecord;
+}
+
+function matrixPhoneMatches(phone, records) {
+  if (shouldShowAllPhonesForSelectedApp()) {
+    const carrier = selectedCarrierFilter();
+    return !carrier || phone?.carrier === carrier;
+  }
+  return phoneMatches(phone, records);
+}
+
+function shouldShowAllPhonesForSelectedApp() {
+  return Boolean(selectedPlatformFilter()) &&
+    !els.searchInput.value.trim() &&
+    !matrixQuickFilter &&
+    selectedStatusFilter() === "all";
 }
 
 function toggleMatrixQuickFilter(filter) {
@@ -1094,6 +1109,10 @@ function selectedPhoneFilter() {
 function selectedCarrierFilter() {
   const value = els.carrierFilter.value;
   return value === "all" ? "" : value;
+}
+
+function selectedStatusFilter() {
+  return els.statusFilter.value || "all";
 }
 
 function renderCarrierFilterOptions() {
