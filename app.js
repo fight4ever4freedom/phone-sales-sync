@@ -695,7 +695,7 @@ function renderMatrix(records) {
         const actions = blockedPlatform ? "" : `<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div>`;
         return `<td><div class="cell filled">${entries}${actions}</div></td>`;
       });
-      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div><strong class="matrix-phone-number">${escapeHtml(phone.number)}</strong><span>${escapeHtml(matrixPhoneSummary(phone))}</span><span class="${phoneProfit(phone) < 0 ? "negative" : "profit"}">${escapeHtml(matrixPhoneProfitText(phone))}</span>${matrixRechargeControl(phone)}</td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div><div class="matrix-phone-line"><strong class="matrix-phone-number">${escapeHtml(phone.number)}</strong>${matrixDeviceTags(phone)}</div><span>${escapeHtml(matrixPhoneSummary(phone))}</span><span class="${phoneProfit(phone) < 0 ? "negative" : "profit"}">${escapeHtml(matrixPhoneProfitText(phone))}</span>${matrixRechargeControl(phone)}</td>${cells.join("")}</tr>`;
     })
     .join("");
 
@@ -891,6 +891,13 @@ function matrixRechargeControl(phone) {
       ${rechargeStatusOption("paid", "\u5df2\u5145\u503c", rechargeStatus)}
     </select>
   </label>`;
+}
+
+function matrixDeviceTags(phone) {
+  return [
+    phone?.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "",
+    phone?.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "",
+  ].filter(Boolean).map((item) => `<span class="matrix-phone-tag">${escapeHtml(item)}</span>`).join("");
 }
 
 function rechargeStatusOption(value, label, selected) {

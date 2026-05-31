@@ -517,11 +517,35 @@ td:first-child {
   font-weight: 700;
 }
 
+.matrix-phone-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
 .matrix-phone-number {
-  display: block;
   font-size: 18px;
   line-height: 1.2;
-  margin-bottom: 3px;
+}
+
+.matrix-phone-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  min-height: 20px;
+  padding: 3px 6px;
+}
+
+td:first-child .matrix-phone-tag {
+  display: inline-flex;
+  margin-top: 0;
 }
 
 td:first-child span {
