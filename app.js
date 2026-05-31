@@ -1859,6 +1859,7 @@ function setContactRows(contacts) {
 function contactNicknameField(platform) {
   if (platform === "\u95f2\u9c7c") return "contactNickname_xianyu";
   if (platform === "QQ") return "contactNickname_qq";
+  if (platform === "TG") return "contactNickname_tg";
   return "contactNickname_wechat";
 }
 
