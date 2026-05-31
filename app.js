@@ -970,7 +970,7 @@ function phoneMatches(phone, records) {
   const text = els.searchInput.value.trim().toLowerCase();
   const carrier = selectedCarrierFilter();
   if (carrier && phone?.carrier !== carrier) return false;
-  const recordFilterActive = Boolean(selectedPlatformFilter() || carrier || matrixQuickFilter || els.statusFilter.value !== "all");
+  const recordFilterActive = Boolean(matrixQuickFilter || els.statusFilter.value !== "all");
   const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
   const phoneTextMatches = [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
     .filter(Boolean)
