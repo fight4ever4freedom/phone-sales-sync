@@ -873,6 +873,18 @@ td:first-child span {
   font-size: 13px;
 }
 
+.matrix-recharge {
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.matrix-recharge select {
+  min-height: 32px;
+  padding: 5px 8px;
+}
+
 .phone-detail-list {
   display: grid;
   gap: 8px;

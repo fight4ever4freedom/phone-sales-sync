@@ -659,7 +659,7 @@ function renderMatrix(records) {
         const actions = blockedPlatform ? "" : `<div class="cell-actions"><button class="cell-add" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">+ \u8ffd\u52a0</button><button class="cell-paste" type="button" data-phone="${escapeAttr(phone.number)}" data-platform="${escapeAttr(platform)}">\u7c98\u8d34</button></div>`;
         return `<td><div class="cell filled">${entries}${actions}</div></td>`;
       });
-      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div><strong class="matrix-phone-number">${escapeHtml(phone.number)}</strong><span>${escapeHtml(matrixPhoneSummary(phone))}</span><span class="${phoneProfit(phone) < 0 ? "negative" : "profit"}">${escapeHtml(matrixPhoneProfitText(phone))}</span></td>${cells.join("")}</tr>`;
+      return `<tr><td><div class="phone-cell-actions"><button class="phone-copy" type="button" data-phone="${escapeAttr(phone.number)}">\u590d\u5236</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="-1" title="\u4e0a\u79fb">\u4e0a\u79fb</button><button class="phone-row-move" type="button" data-phone-id="${escapeAttr(phone.id)}" data-direction="1" title="\u4e0b\u79fb">\u4e0b\u79fb</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="cancelled">\u6ce8\u9500</button><button class="phone-archive" type="button" data-phone-id="${escapeAttr(phone.id)}" data-status="blocked">\u5c01\u7981</button></div><strong class="matrix-phone-number">${escapeHtml(phone.number)}</strong><span>${escapeHtml(matrixPhoneSummary(phone))}</span><span class="${phoneProfit(phone) < 0 ? "negative" : "profit"}">${escapeHtml(matrixPhoneProfitText(phone))}</span>${matrixRechargeControl(phone)}</td>${cells.join("")}</tr>`;
     })
     .join("");
 
@@ -707,6 +707,13 @@ function renderMatrix(records) {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       movePhoneRow(button.dataset.phoneId, Number(button.dataset.direction));
+    });
+  });
+  els.matrixTable.querySelectorAll(".phone-recharge-status").forEach((select) => {
+    select.addEventListener("click", (event) => event.stopPropagation());
+    select.addEventListener("change", (event) => {
+      event.stopPropagation();
+      updatePhoneRechargeStatus(select.dataset.phoneId, select.value);
     });
   });
   els.matrixTable.querySelectorAll(".cell.empty").forEach((cell) => {
@@ -799,14 +806,9 @@ function renderPhones(records) {
   els.phoneList.querySelectorAll(".delete-phone").forEach((button) => {
     button.addEventListener("click", () => deletePhone(button.dataset.phoneId));
   });
-  els.phoneList.querySelectorAll(".phone-recharge-status").forEach((select) => {
-    select.addEventListener("change", () => updatePhoneRechargeStatus(select.dataset.phoneId, select.value));
-  });
 }
 
 function phoneLookupDetail(phone, recordCount) {
-  const rechargeMonth = currentMonth();
-  const rechargeStatus = monthlyRechargeStatus(phone, rechargeMonth);
   return `<article class="phone-card phone-lookup-card">
       <div class="phone-lookup-title">
         <strong>${escapeHtml(phone.number)}</strong>
@@ -822,19 +824,10 @@ function phoneLookupDetail(phone, recordCount) {
           <strong>${escapeHtml(phone.slotNo || "\u672a\u586b\u5199")}</strong>
         </article>
       </div>
-      <label class="recharge-control">
-        <span>\u672c\u6708\u5145\u503c\u60c5\u51b5\u00a0${escapeHtml(rechargeMonth)}</span>
-        <select class="phone-recharge-status" data-phone-id="${escapeAttr(phone.id)}">
-          ${rechargeStatusOption("", "\u672a\u8bb0\u5f55", rechargeStatus)}
-          ${rechargeStatusOption("unpaid", "\u672a\u5145\u503c", rechargeStatus)}
-          ${rechargeStatusOption("paid", "\u5df2\u5145\u503c", rechargeStatus)}
-        </select>
-      </label>
       <dl class="phone-detail-list">
         <div><dt>\u59d3\u540d</dt><dd>${escapeHtml(phone.personName || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u5361\u7c7b\u578b</dt><dd>${escapeHtml(cardCategoryLabel(phone.cardCategory || inferCardCategory(phone.carrier)))}</dd></div>
-        <div><dt>\u5145\u503c\u72b6\u6001</dt><dd>${escapeHtml(monthlyRechargeLabel(rechargeStatus))}</dd></div>
         <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
         <div><dt>\u603b\u6210\u672c</dt><dd>${currency(phoneTotalCost(phone))}</dd></div>
         <div><dt>\u5e73\u53f0\u8bb0\u5f55</dt><dd>\u5f53\u524d\u7b5b\u9009\u4e0b ${recordCount} \u6761</dd></div>
@@ -848,6 +841,19 @@ function phoneLookupDetail(phone, recordCount) {
 
 function phoneLookupLabel(phone) {
   return [phone.number, phone.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "", phone.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "", phone.carrier].filter(Boolean).join(" / ");
+}
+
+function matrixRechargeControl(phone) {
+  const rechargeMonth = currentMonth();
+  const rechargeStatus = monthlyRechargeStatus(phone, rechargeMonth);
+  return `<label class="recharge-control matrix-recharge">
+    <span>\u672c\u6708\u5145\u503c</span>
+    <select class="phone-recharge-status" data-phone-id="${escapeAttr(phone.id)}">
+      ${rechargeStatusOption("", "\u672a\u8bb0\u5f55", rechargeStatus)}
+      ${rechargeStatusOption("unpaid", "\u672a\u5145\u503c", rechargeStatus)}
+      ${rechargeStatusOption("paid", "\u5df2\u5145\u503c", rechargeStatus)}
+    </select>
+  </label>`;
 }
 
 function rechargeStatusOption(value, label, selected) {
