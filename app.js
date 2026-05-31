@@ -107,6 +107,7 @@ const els = {
   financeSold: document.querySelector("#financeSold"),
   financeProfit: document.querySelector("#financeProfit"),
   monthFinanceTable: document.querySelector("#monthFinanceTable"),
+  dayFinanceTable: document.querySelector("#dayFinanceTable"),
   appFinanceTable: document.querySelector("#appFinanceTable"),
   phoneFinanceTable: document.querySelector("#phoneFinanceTable"),
   customerCount: document.querySelector("#customerCount"),
@@ -364,6 +365,7 @@ function renderFinance() {
   els.financeProfit.textContent = currency(profit);
   els.financeProfit.classList.toggle("negative", profit < 0);
   renderMonthFinance();
+  renderDayFinance();
   renderAppFinance();
   renderPhoneFinance();
 }
@@ -407,6 +409,36 @@ function renderMonthFinance() {
       { html: `<span class="${row.profit < 0 ? "negative" : ""}">${currency(row.profit)}</span>` },
     ]),
     6,
+  );
+}
+
+function renderDayFinance() {
+  const dayMap = new Map();
+  paidRecords().forEach((item) => {
+    const day = recordDate(item);
+    if (!day) return;
+    if (!dayMap.has(day)) {
+      dayMap.set(day, {
+        day,
+        count: 0,
+        income: 0,
+      });
+    }
+    const row = dayMap.get(day);
+    row.count += 1;
+    row.income += Number(item.price || 0);
+  });
+
+  const rows = [...dayMap.values()].sort((a, b) => b.day.localeCompare(a.day));
+  els.dayFinanceTable.innerHTML = financeTable(
+    ["\u65e5\u671f", "\u9500\u552e\u6b21\u6570", "\u9500\u552e\u989d"],
+    rows.map((row) => [
+      row.day,
+      row.count,
+      currency(row.income),
+    ]),
+    3,
+    "\u6682\u65e0\u6bcf\u65e5\u9500\u552e\u6570\u636e",
   );
 }
 
