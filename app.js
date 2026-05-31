@@ -844,6 +844,7 @@ function phoneLookupLabel(phone) {
 }
 
 function matrixRechargeControl(phone) {
+  if (!isRegistrationCard(phone)) return "";
   const rechargeMonth = currentMonth();
   const rechargeStatus = monthlyRechargeStatus(phone, rechargeMonth);
   return `<label class="recharge-control matrix-recharge">
