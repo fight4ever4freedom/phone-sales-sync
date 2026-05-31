@@ -94,6 +94,7 @@ const els = {
   platformFilterOptions: document.querySelector("#platformFilterOptions"),
   phoneFilter: document.querySelector("#phoneFilter"),
   phoneFilterOptions: document.querySelector("#phoneFilterOptions"),
+  carrierFilter: document.querySelector("#carrierFilter"),
   statusFilter: document.querySelector("#statusFilter"),
   syncStatus: document.querySelector("#syncStatus"),
   searchInput: document.querySelector("#searchInput"),
@@ -154,6 +155,7 @@ function fillOptions() {
   els.statusSelect.innerHTML = statuses.map((item) => option(item.label, item.value)).join("");
   els.platformFilterOptions.innerHTML = platforms.map((name) => `<option value="${escapeAttr(name)}"></option>`).join("");
   els.phoneFilterOptions.innerHTML = data.phones.map((phone) => `<option value="${escapeAttr(phone.number)}">${escapeHtml(matrixPhoneSummary(phone))}</option>`).join("");
+  renderCarrierFilterOptions();
   els.statusFilter.innerHTML = option("\u5168\u90e8\u72b6\u6001", "all") + statuses.map((item) => option(item.label, item.value)).join("");
 }
 
@@ -226,6 +228,7 @@ function bindEvents() {
   els.searchInput.addEventListener("input", render);
   els.phoneFilter.addEventListener("input", render);
   els.phoneFilter.addEventListener("change", render);
+  els.carrierFilter.addEventListener("change", render);
   els.platformFilter.addEventListener("input", render);
   els.platformFilter.addEventListener("change", render);
   els.statusFilter.addEventListener("change", render);
@@ -327,6 +330,7 @@ function saveRecord(event) {
 function render() {
   const visible = filteredRecords();
   renderStats();
+  renderCarrierFilterOptions();
   renderPhoneOptions();
   renderQuickPhoneList();
   renderMatrix(visible);
@@ -945,6 +949,7 @@ function filteredRecords() {
   const text = els.searchInput.value.trim().toLowerCase();
   const platform = selectedPlatformFilter();
   const phoneFilter = selectedPhoneFilter();
+  const carrier = selectedCarrierFilter();
   const status = els.statusFilter.value;
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
@@ -954,6 +959,7 @@ function filteredRecords() {
       .toLowerCase();
     return (!text || haystack.includes(text)) &&
       (!phoneFilter || item.phoneId === phoneFilter.id) &&
+      (!carrier || phone?.carrier === carrier) &&
       (!platform || item.platform === platform) &&
       (status === "all" || item.status === status) &&
       recordMatchesMatrixQuickFilter(item);
@@ -962,7 +968,9 @@ function filteredRecords() {
 
 function phoneMatches(phone, records) {
   const text = els.searchInput.value.trim().toLowerCase();
-  const recordFilterActive = Boolean(selectedPlatformFilter() || matrixQuickFilter || els.statusFilter.value !== "all");
+  const carrier = selectedCarrierFilter();
+  if (carrier && phone?.carrier !== carrier) return false;
+  const recordFilterActive = Boolean(selectedPlatformFilter() || carrier || matrixQuickFilter || els.statusFilter.value !== "all");
   const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
   const phoneTextMatches = [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
     .filter(Boolean)
@@ -1081,6 +1089,18 @@ function selectedPlatformFilter() {
 function selectedPhoneFilter() {
   const value = els.phoneFilter.value.trim();
   return data.phones.find((phone) => phone.number === value) || null;
+}
+
+function selectedCarrierFilter() {
+  const value = els.carrierFilter.value;
+  return value === "all" ? "" : value;
+}
+
+function renderCarrierFilterOptions() {
+  const selected = els.carrierFilter.value || "all";
+  const carriers = uniqueList(data.phones.map((phone) => phone.carrier)).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  els.carrierFilter.innerHTML = option("\u5168\u90e8\u8fd0\u8425\u5546", "all") + carriers.map((carrier) => option(carrier)).join("");
+  els.carrierFilter.value = carriers.includes(selected) ? selected : "all";
 }
 
 function groupedMatrixPhones(phones) {
