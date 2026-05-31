@@ -29,7 +29,7 @@ const statuses = [
   { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "cannot-register" },
 ];
 
-const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1"];
+const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1", "TG"];
 
 const storageKey = "phone-sales-manager-v1";
 const syncEnabled = location.protocol === "http:" || location.protocol === "https:";
