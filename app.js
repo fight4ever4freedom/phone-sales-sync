@@ -1231,6 +1231,8 @@ function pasteRecordTemplate(phoneNumber, platform) {
     id: makeId(),
     phoneId: phone.id,
     platform,
+    date: formatDate(startOfToday()),
+    loginCheckLogs: [],
     updatedAt: new Date().toISOString(),
   });
   persist();
