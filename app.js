@@ -42,9 +42,9 @@ const makeId = () => {
 
 const demoData = {
   phones: [
-    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "1" },
-    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "2" },
-    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A02", slotNo: "1" },
+    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "1", registrationDate: "2026-05-30" },
+    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "2", registrationDate: "2026-05-23" },
+    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A02", slotNo: "1", registrationDate: "2026-05-25" },
   ],
   records: [],
 };
@@ -271,6 +271,7 @@ function saveRecord(event) {
       monthlyRent: moneyValue(values.monthlyRent),
       personName: values.personName.trim(),
       personCost: moneyValue(values.personCost),
+      registrationDate: values.registrationDate,
       carrier,
       cardCategory,
       deviceNo: values.deviceNo.trim(),
@@ -284,6 +285,7 @@ function saveRecord(event) {
     phone.monthlyRent = moneyField(values.monthlyRent, phone.monthlyRent);
     phone.personName = values.personName.trim() || phone.personName || "";
     phone.personCost = moneyField(values.personCost, phone.personCost);
+    phone.registrationDate = values.registrationDate || phone.registrationDate || "";
     phone.carrier = carrier || phone.carrier || "";
     phone.cardCategory = cardCategory || phone.cardCategory || inferCardCategory(phone.carrier);
     phone.deviceNo = values.deviceNo.trim() || phone.deviceNo || "";
@@ -862,6 +864,7 @@ function phoneLookupDetail(phone, recordCount) {
       </div>
       <dl class="phone-detail-list">
         <div><dt>\u59d3\u540d</dt><dd>${escapeHtml(phone.personName || "\u672a\u586b\u5199")}</dd></div>
+        <div><dt>\u6ce8\u518c\u65f6\u95f4</dt><dd>${escapeHtml(phone.registrationDate || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u5361\u7c7b\u578b</dt><dd>${escapeHtml(cardCategoryLabel(phone.cardCategory || inferCardCategory(phone.carrier)))}</dd></div>
         <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
@@ -895,6 +898,7 @@ function matrixRechargeControl(phone) {
 
 function matrixDeviceTags(phone) {
   return [
+    phone?.registrationDate ? `\u6ce8\u518c ${phone.registrationDate}` : "",
     phone?.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "",
     phone?.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "",
   ].filter(Boolean).map((item) => `<span class="matrix-phone-tag">${escapeHtml(item)}</span>`).join("");
@@ -992,7 +996,7 @@ function filteredRecords() {
   const status = selectedStatusFilter();
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
-    const haystack = [phone?.number, phoneSummary(phone), phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
+    const haystack = [phone?.number, phoneSummary(phone), phone?.registrationDate, phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -1011,7 +1015,7 @@ function phoneMatches(phone, records) {
   if (carrier && phone?.carrier !== carrier) return false;
   const recordFilterActive = Boolean(matrixQuickFilter || selectedStatusFilter() !== "all");
   const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
-  const phoneTextMatches = [phone.number, phoneSummary(phone), phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
+  const phoneTextMatches = [phone.number, phoneSummary(phone), phone.registrationDate, phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
     .filter(Boolean)
     .join(" ")
     .toLowerCase()
@@ -1092,6 +1096,7 @@ function fillPhoneFields(phone) {
   form.elements.monthlyRent.value = displayNumber(phone.monthlyRent);
   form.elements.personName.value = phone.personName || "";
   form.elements.personCost.value = displayNumber(phone.personCost);
+  form.elements.registrationDate.value = phone.registrationDate || phoneActivationDate(phone) || "";
   form.elements.carrier.value = phone.carrier || "";
   form.elements.cardCategory.value = phone.cardCategory || inferCardCategory(phone.carrier) || "";
   form.elements.deviceNo.value = phone.deviceNo || "";
@@ -1747,6 +1752,7 @@ function phoneBillingMonths(phone) {
 }
 
 function phoneActivationDate(phone) {
+  if (phone?.registrationDate) return phone.registrationDate;
   return data.records
     .filter((item) => item.phoneId === phone?.id && item.date)
     .map((item) => item.date)
@@ -2020,6 +2026,7 @@ function normalizeData(next) {
       monthlyRent: moneyValue(phone.monthlyRent),
       personName: phone.personName || phone.cardOwner || "",
       personCost: moneyValue(phone.personCost ?? phone.laborCost),
+      registrationDate: phone.registrationDate || phone.activationDate || earliestPhoneRecordDate(next.records, phone.id),
       carrier: phone.carrier || phone.tag || "",
       cardCategory: phone.cardCategory || inferCardCategory(phone.carrier || phone.tag || ""),
       deviceNo: phone.deviceNo || "",
@@ -2049,6 +2056,13 @@ function normalizeData(next) {
       actualCancelDate: item.actualCancelDate || "",
     })),
   };
+}
+
+function earliestPhoneRecordDate(records, phoneId) {
+  return (Array.isArray(records) ? records : [])
+    .filter((item) => item.phoneId === phoneId && item.date)
+    .map((item) => item.date)
+    .sort()[0] || "";
 }
 
 function uniqueList(items) {
