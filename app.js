@@ -1,4 +1,4 @@
-const defaultPlatforms = [
+﻿const defaultPlatforms = [
   "\u6296\u97f3",
   "\u5fae\u4fe1",
   "\u652f\u4ed8\u5b9d",
@@ -207,14 +207,7 @@ function bindEvents() {
   document.querySelector("#addAppBtn").addEventListener("click", addAppOption);
   document.querySelector("#deleteAppBtn").addEventListener("click", deleteAppOption);
   document.querySelector("#githubSyncBtn").addEventListener("click", setupGitHubSync);
-  document.querySelector("#resetDemoBtn").addEventListener("click", () => {
-    pushUndo();
-    data = { ...cloneData(demoData), platforms: [...platforms] };
-    persist();
-    fillOptions();
-    clearForm();
-    render();
-  });
+
   document.querySelector("#exportBtn").addEventListener("click", exportData);
   document.querySelector("#importFile").addEventListener("change", importData);
   ["cardFee", "initialRecharge", "monthlyRent", "personCost"].forEach((name) => {
@@ -484,7 +477,7 @@ function renderPhoneFinance() {
   els.phoneFinanceTable.innerHTML = financeTable(
     ["\u624b\u673a\u53f7", "\u8bb0\u5f55", "\u5df2\u552e", "\u6210\u672c", "\u5df2\u552e\u91d1\u989d", "\u5229\u6da6"],
     rows.map((row) => [
-      `${row.phone.number}${row.phone.carrier ? ` · ${row.phone.carrier}` : ""}${row.phone.personName ? ` · ${row.phone.personName}` : ""}`,
+      `${row.phone.number}${row.phone.carrier ? ` 路 ${row.phone.carrier}` : ""}${row.phone.personName ? ` 路 ${row.phone.personName}` : ""}`,
       row.records,
       data.records.filter((item) => item.phoneId === row.phone.id && hasRecordPrice(item)).length,
       currency(row.cost),
@@ -686,7 +679,7 @@ function renderMatrix(records) {
             <button class="entry-copy" type="button" data-record="${item.id}" title="\u590d\u5236\u8fd9\u6761\u8bb0\u5f55">\u590d\u5236</button>
             <button class="entry-delete" type="button" data-record="${item.id}" title="\u5220\u9664\u8fd9\u6761\u8bb0\u5f55">\u5220\u9664</button>
             ${loginCheckNeedsAction(item) ? `<button class="entry-login-check" type="button" data-record="${item.id}" title="\u586b\u5199\u767b\u5f55\u540e\u60c5\u51b5">\u53ef\u767b\u5f55</button>` : ""}
-            <strong>${escapeHtml(statusLabel(item.status))}${item.price ? ` · ${currency(item.price)}` : ""}</strong>
+            <strong>${escapeHtml(statusLabel(item.status))}${item.price ? ` 路 ${currency(item.price)}` : ""}</strong>
             <span>${escapeHtml([contactText(item), item.date].filter(Boolean).join(" / "))}</span>
             <span>${escapeHtml(loginCheckText(item))}</span>
             <span>${escapeHtml(registerableText(item))}</span>
@@ -786,7 +779,7 @@ function renderRecords(records) {
     .forEach((item) => {
       const phone = phoneById(item.phoneId);
       const node = els.template.content.cloneNode(true);
-      node.querySelector(".record-title").textContent = `${phone?.number || "\u672a\u77e5\u624b\u673a\u53f7"} · ${item.platform}`;
+      node.querySelector(".record-title").textContent = `${phone?.number || "\u672a\u77e5\u624b\u673a\u53f7"} 路 ${item.platform}`;
       node.querySelector(".record-meta").textContent = [
         item.price ? currency(item.price) : "",
         contactText(item),
@@ -956,11 +949,11 @@ function renderPeopleStats() {
       const carrierBlocks = [...carrierMap.entries()]
         .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
         .map(([carrier, carrierPhones]) => `<div class="person-carrier">
-          <strong>${escapeHtml(carrier)} · ${carrierPhones.length} \u5f20\u5361</strong>
-          <p>${escapeHtml(carrierPhones.map((phone) => `${phone.number}${phone.deviceNo ? ` / \u8bbe\u5907${phone.deviceNo}` : ""}${phone.slotNo ? ` / \u5361\u69fd${phone.slotNo}` : ""}`).join("；"))}</p>
+          <strong>${escapeHtml(carrier)} 路 ${carrierPhones.length} \u5f20\u5361</strong>
+          <p>${escapeHtml(carrierPhones.map((phone) => `${phone.number}${phone.deviceNo ? ` / \u8bbe\u5907${phone.deviceNo}` : ""}${phone.slotNo ? ` / \u5361\u69fd${phone.slotNo}` : ""}`).join("锛?))}</p>
         </div>`).join("");
       return `<article class="person-card">
-        <h2>${escapeHtml(name)} · ${phones.length} \u5f20\u5361 · \u4eba\u5458\u6210\u672c ${currency(personCost)}</h2>
+        <h2>${escapeHtml(name)} 路 ${phones.length} \u5f20\u5361 路 \u4eba\u5458\u6210\u672c ${currency(personCost)}</h2>
         ${carrierBlocks}
       </article>`;
     }).join("") || `<p class="empty-state">\u6682\u65e0\u59d3\u540d\u7edf\u8ba1</p>`;
@@ -972,7 +965,7 @@ function renderArchivedPhones(records) {
   const phones = data.phones.filter((phone) => !isActivePhone(phone) && phoneMatches(phone, records));
   els.archivedPhoneList.innerHTML = phones.length
     ? phones.map((phone) => `<article class="phone-card archived">
-        <strong>${escapeHtml(phone.number)} · ${escapeHtml(phoneArchiveLabel(phone))}</strong>
+        <strong>${escapeHtml(phone.number)} 路 ${escapeHtml(phoneArchiveLabel(phone))}</strong>
         <p>${escapeHtml(phone.blockReason ? `\u5c01\u7981\u539f\u56e0\uff1a${phone.blockReason}` : "\u65e0\u5c01\u7981\u539f\u56e0")}</p>
         <p>${escapeHtml(phone.archivedAt ? `\u5904\u7406\u65f6\u95f4\uff1a${phone.archivedAt.slice(0, 10)}` : "")}</p>
         <p>${escapeHtml(phoneSummary(phone))}</p>
@@ -1770,11 +1763,11 @@ function phoneCancelDate(phone) {
 }
 
 function phoneSummary(phone) {
-  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", cardCategoryLabel(phone?.cardCategory || inferCardCategory(phone?.carrier)), phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" · ");
+  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", cardCategoryLabel(phone?.cardCategory || inferCardCategory(phone?.carrier)), phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" 路 ");
 }
 
 function matrixPhoneSummary(phone) {
-  return [phone?.personName || "", phone?.carrier || ""].filter(Boolean).join(" · ");
+  return [phone?.personName || "", phone?.carrier || ""].filter(Boolean).join(" 路 ");
 }
 
 function phoneProfit(phone) {
@@ -2082,7 +2075,7 @@ function normalizeMonthlyRecharges(value) {
 }
 
 function currency(value) {
-  return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
+  return `楼${Number(value || 0).toLocaleString("zh-CN")}`;
 }
 
 function cloneData(value) {
@@ -2102,3 +2095,4 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
@@ -14,14 +14,12 @@
           <h1>&#25163;&#26426;&#31649;&#29702;&#31995;&#32479;</h1>
         </div>
         <div class="actions">
-          <button class="icon-button" id="exportBtn" title="Export JSON" aria-label="Export JSON">↓</button>
+          <button class="icon-button" id="exportBtn" title="Export JSON" aria-label="Export JSON">鈫?/button>
           <label class="icon-button" title="Import JSON" aria-label="Import JSON">
-            ↑
-            <input id="importFile" type="file" accept="application/json" hidden />
+            鈫?            <input id="importFile" type="file" accept="application/json" hidden />
           </label>
           <button class="ghost-button" id="githubSyncBtn">GitHub&#21516;&#27493;</button>
           <span class="sync-status" id="syncStatus">&#26412;&#22320;&#24050;&#20445;&#23384;</span>
-          <button class="ghost-button" id="resetDemoBtn">&#24674;&#22797;&#31034;&#20363;</button>
         </div>
       </header>
 
@@ -32,7 +30,7 @@
         </article>
         <article class="stat-action" data-quick-filter="cancelable" role="button" tabindex="0" title="&#28857;&#20987;&#22312;&#30697;&#38453;&#20013;&#26597;&#30475;&#21487;&#27880;&#38144;&#36134;&#21495;">
           <span>&#21487;&#27880;&#38144;&#20010;&#25968;</span>
-          <strong id="soldTotal">¥0</strong>
+          <strong id="soldTotal">楼0</strong>
         </article>
         <article class="stat-action" data-quick-filter="login" role="button" tabindex="0" title="&#28857;&#20987;&#22312;&#30697;&#38453;&#20013;&#26597;&#30475;&#21487;&#30331;&#24405;&#36134;&#21495;">
           <span>&#21487;&#30331;&#24405;&#20010;&#25968;</span>
@@ -44,7 +42,7 @@
         </article>
         <article>
           <span>&#24635;&#25104;&#26412;</span>
-          <strong id="costTotal">¥0</strong>
+          <strong id="costTotal">楼0</strong>
         </article>
         <article>
           <span>&#21487;&#30331;&#24405;&#25552;&#37266;</span>
@@ -101,7 +99,7 @@
             </div>
             <div class="cost-line">
               <span>&#24635;&#25104;&#26412;</span>
-              <strong id="formTotalCost">¥0</strong>
+              <strong id="formTotalCost">楼0</strong>
             </div>
             <div class="split">
               <label>
@@ -132,7 +130,7 @@
               <div class="inline-add">
                 <select name="platform" required></select>
                 <button class="icon-button" id="addAppBtn" type="button" title="Add APP" aria-label="Add APP">+</button>
-                <button class="icon-button danger-icon" id="deleteAppBtn" type="button" title="Delete APP" aria-label="Delete APP">×</button>
+                <button class="icon-button danger-icon" id="deleteAppBtn" type="button" title="Delete APP" aria-label="Delete APP">脳</button>
               </div>
             </label>
             <div class="split">
@@ -198,7 +196,7 @@
         <section class="main-panel">
           <div class="toolbar">
             <div class="search">
-              <span>⌕</span>
+              <span>鈱?/span>
               <input id="searchInput" placeholder="&#25628;&#32034;&#25163;&#26426;&#21495;&#12289;APP&#12289;&#25104;&#20132;&#24179;&#21488;&#12289;&#26165;&#31216;&#12289;&#22791;&#27880;" />
             </div>
             <input id="phoneFilter" list="phoneFilterOptions" placeholder="&#20840;&#37096;&#25163;&#26426;&#21495;" aria-label="phone filter" />
@@ -245,15 +243,15 @@
             <section class="finance-summary">
               <article>
                 <span>&#24635;&#25104;&#26412;</span>
-                <strong id="financeCost">¥0</strong>
+                <strong id="financeCost">楼0</strong>
               </article>
               <article>
                 <span>&#24050;&#21806;&#37329;&#39069;</span>
-                <strong id="financeSold">¥0</strong>
+                <strong id="financeSold">楼0</strong>
               </article>
               <article>
                 <span>&#21033;&#28070;</span>
-                <strong id="financeProfit">¥0</strong>
+                <strong id="financeProfit">楼0</strong>
               </article>
             </section>
             <div class="finance-grid">
@@ -325,3 +323,4 @@
     <script src="app.js"></script>
   </body>
 </html>
+
