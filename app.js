@@ -1,4 +1,4 @@
-﻿const defaultPlatforms = [
+const defaultPlatforms = [
   "\u6296\u97f3",
   "\u5fae\u4fe1",
   "\u652f\u4ed8\u5b9d",
@@ -950,7 +950,7 @@ function renderPeopleStats() {
         .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
         .map(([carrier, carrierPhones]) => `<div class="person-carrier">
           <strong>${escapeHtml(carrier)} 路 ${carrierPhones.length} \u5f20\u5361</strong>
-          <p>${escapeHtml(carrierPhones.map((phone) => `${phone.number}${phone.deviceNo ? ` / \u8bbe\u5907${phone.deviceNo}` : ""}${phone.slotNo ? ` / \u5361\u69fd${phone.slotNo}` : ""}`).join("锛?))}</p>
+          <p>${escapeHtml(carrierPhones.map((phone) => `${phone.number}${phone.deviceNo ? ` / \u8bbe\u5907${phone.deviceNo}` : ""}${phone.slotNo ? ` / \u5361\u69fd${phone.slotNo}` : ""}`).join("\uff1b"))}</p>
         </div>`).join("");
       return `<article class="person-card">
         <h2>${escapeHtml(name)} 路 ${phones.length} \u5f20\u5361 路 \u4eba\u5458\u6210\u672c ${currency(personCost)}</h2>
@@ -2075,7 +2075,7 @@ function normalizeMonthlyRecharges(value) {
 }
 
 function currency(value) {
-  return `楼${Number(value || 0).toLocaleString("zh-CN")}`;
+  return `\u00a5${Number(value || 0).toLocaleString("zh-CN")}`;
 }
 
 function cloneData(value) {
