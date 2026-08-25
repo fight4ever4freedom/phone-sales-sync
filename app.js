@@ -23,13 +23,13 @@ const statuses = [
   { value: "testing", label: "\u5f85\u6d4b\u8bd5", tone: "review" },
   { value: "cancelled_pending_register", label: "\u5df2\u6ce8\u9500\u5f85\u6ce8\u518c", tone: "available" },
   { value: "cancelled_registerable", label: "\u5df2\u6ce8\u9500\u53ef\u6ce8\u518c", tone: "registerable" },
-  { value: "cancelled_registered", label: "\u5df2\u6ce8\u9500\u5df2\u6ce8\u518c", tone: "registered" },
   { value: "own", label: "\u81ea\u7528", tone: "own" },
   { value: "own_blocked", label: "\u81ea\u7528\u5df2\u5c01\u7981", tone: "own-blocked" },
   { value: "cannot_register", label: "\u65e0\u6cd5\u6ce8\u518c", tone: "cannot-register" },
 ];
 
 const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1", "TG"];
+const defaultAppSaleChannels = ["自己厅卡", "自己虚拟卡", "接码平台", "接码群"];
 
 const storageKey = "phone-sales-manager-v1";
 const syncEnabled = location.protocol === "http:" || location.protocol === "https:";
@@ -42,9 +42,9 @@ const makeId = () => {
 
 const demoData = {
   phones: [
-    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "1", registrationDate: "2026-05-30" },
-    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "2", registrationDate: "2026-05-23" },
-    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A02", slotNo: "1", registrationDate: "2026-05-25" },
+    { id: makeId(), number: "13294936354", cardFee: 0, initialRecharge: 0, monthlyRent: 39, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "1", registrationDate: "2026-05-30", simRole: "", dataPlan: "" },
+    { id: makeId(), number: "13294931680", cardFee: 0, initialRecharge: 0, monthlyRent: 10, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A01", slotNo: "2", registrationDate: "2026-05-23", simRole: "", dataPlan: "" },
+    { id: makeId(), number: "13187442010", cardFee: 0, initialRecharge: 0, monthlyRent: 19, personName: "", personCost: 0, carrier: "\u8054\u901a", deviceNo: "A02", slotNo: "1", registrationDate: "2026-05-25", simRole: "", dataPlan: "" },
   ],
   records: [],
 };
@@ -66,14 +66,19 @@ demoData.records = [
 
 let data = normalizeData({ ...cloneData(demoData), platforms: [...defaultPlatforms] });
 let platforms = data.platforms || [...defaultPlatforms];
+let appSaleChannels = data.appSaleChannels || [...defaultAppSaleChannels];
 let editingId = null;
 let copiedRecord = null;
 let selectedPhoneLookupId = "";
 let githubSyncTimer = null;
 let matrixQuickFilter = "";
+let editingAppSaleDetailId = null;
+let appSaleDetailFilterValue = "all";
 const undoStack = [];
 
 const form = document.querySelector("#recordForm");
+const channelSaleForm = document.querySelector("#channelSaleForm");
+const appSaleDetailForm = document.querySelector("#appSaleDetailForm");
 const els = {
   phoneCount: document.querySelector("#phoneCount"),
   recordCount: document.querySelector("#recordCount"),
@@ -84,9 +89,7 @@ const els = {
   loginCheckDueCount: document.querySelector("#loginCheckDueCount"),
   cancelDueCount: document.querySelector("#cancelDueCount"),
   formTotalCost: document.querySelector("#formTotalCost"),
-  priceLabel: document.querySelector("#priceLabel"),
-  formLoginCheckHint: document.querySelector("#formLoginCheckHint"),
-  phoneOptions: document.querySelector("#phoneOptions"),
+  priceLabel: document.querySelector("#priceLabel"),  phoneOptions: document.querySelector("#phoneOptions"),
   quickPhoneList: document.querySelector("#quickPhoneList"),
   platformSelect: form.elements.platform,
   statusSelect: form.elements.status,
@@ -114,6 +117,15 @@ const els = {
   customerPurchaseCount: document.querySelector("#customerPurchaseCount"),
   customerTotalAmount: document.querySelector("#customerTotalAmount"),
   customerAnalysisTable: document.querySelector("#customerAnalysisTable"),
+  channelSaleCount: document.querySelector("#channelSaleCount"),
+  channelSaleAmount: document.querySelector("#channelSaleAmount"),
+  channelSaleProfit: document.querySelector("#channelSaleProfit"),
+  channelProductTable: document.querySelector("#channelProductTable"),
+  channelSaleTable: document.querySelector("#channelSaleTable"),
+  appSaleDetailTable: document.querySelector("#appSaleDetailTable"),
+  appSaleDetailFilter: document.querySelector("#appSaleDetailFilter"),
+  appSaleChannelRows: document.querySelector("#appSaleChannelRows"),
+  appSaleChannelOptionSelect: document.querySelector("#appSaleChannelOptionSelect"),
   template: document.querySelector("#recordTemplate"),
 };
 
@@ -141,12 +153,15 @@ function init() {
   fillOptions();
   bindEvents();
   clearForm();
+  clearChannelSaleForm();
+  clearAppSaleDetailForm();
   render();
 }
 
 async function boot() {
   data = await loadData();
   platforms = data.platforms || [...defaultPlatforms];
+  appSaleChannels = data.appSaleChannels || [...defaultAppSaleChannels];
   init();
   persistLocalOnly();
 }
@@ -158,6 +173,7 @@ function fillOptions() {
   els.phoneFilterOptions.innerHTML = data.phones.map((phone) => `<option value="${escapeAttr(phone.number)}">${escapeHtml(matrixPhoneSummary(phone))}</option>`).join("");
   renderCarrierFilterOptions();
   els.statusFilter.innerHTML = option("\u5168\u90e8\u72b6\u6001", "all") + statuses.map((item) => option(item.label, item.value)).join("");
+  renderAppSaleChannelOptions();
 }
 
 function option(label, value = label) {
@@ -203,7 +219,22 @@ function deleteAppOption() {
 
 function bindEvents() {
   form.addEventListener("submit", saveRecord);
+  if (channelSaleForm) channelSaleForm.addEventListener("submit", saveChannelSale);
+  if (appSaleDetailForm) {
+    appSaleDetailForm.addEventListener("submit", saveAppSaleDetail);
+    appSaleDetailForm.elements.app.addEventListener("input", fillAppSaleDetailFromSelectedApp);
+    appSaleDetailForm.elements.app.addEventListener("change", fillAppSaleDetailFromSelectedApp);
+    document.querySelector("#addAppSaleChannelOptionBtn")?.addEventListener("click", addAppSaleChannelOption);
+    document.querySelector("#deleteAppSaleChannelOptionBtn")?.addEventListener("click", deleteAppSaleChannelOption);
+    els.appSaleChannelOptionSelect?.addEventListener("change", fillSelectedAppSaleChannelDetail);
+    els.appSaleDetailFilter?.addEventListener("change", () => {
+      appSaleDetailFilterValue = els.appSaleDetailFilter.value || "all";
+      renderAppSaleDetails();
+    });
+  }
   document.querySelector("#clearFormBtn").addEventListener("click", clearForm);
+  document.querySelector("#clearChannelSaleBtn")?.addEventListener("click", clearChannelSaleForm);
+  document.querySelector("#clearAppSaleDetailBtn")?.addEventListener("click", clearAppSaleDetailForm);
   document.querySelector("#addAppBtn").addEventListener("click", addAppOption);
   document.querySelector("#deleteAppBtn").addEventListener("click", deleteAppOption);
   document.querySelector("#githubSyncBtn").addEventListener("click", setupGitHubSync);
@@ -213,10 +244,7 @@ function bindEvents() {
   ["cardFee", "initialRecharge", "monthlyRent", "personCost"].forEach((name) => {
     form.elements[name].addEventListener("input", renderFormCost);
   });
-  form.elements.carrier.addEventListener("input", applyCarrierCategory);
-  form.elements.date.addEventListener("input", renderReminderHints);
-  form.elements.loginCheckAfterDays.addEventListener("input", renderFormLoginCheckHint);
-  form.elements.status.addEventListener("change", updatePriceLabel);
+  form.elements.carrier.addEventListener("input", applyCarrierCategory);  form.elements.status.addEventListener("change", updatePriceLabel);
   form.elements.phone.addEventListener("change", () => selectPhoneProfile(form.elements.phone.value));
   form.elements.phone.addEventListener("blur", () => selectPhoneProfile(form.elements.phone.value));
   els.searchInput.addEventListener("input", render);
@@ -269,6 +297,8 @@ function saveRecord(event) {
       cardCategory,
       deviceNo: values.deviceNo.trim(),
       slotNo: values.slotNo.trim(),
+      simRole: values.simRole || "",
+      dataPlan: values.dataPlan.trim(),
       monthlyRecharges: {},
     };
     data.phones.push(phone);
@@ -283,6 +313,8 @@ function saveRecord(event) {
     phone.cardCategory = cardCategory || phone.cardCategory || inferCardCategory(phone.carrier);
     phone.deviceNo = values.deviceNo.trim() || phone.deviceNo || "";
     phone.slotNo = values.slotNo.trim() || phone.slotNo || "";
+    phone.simRole = values.simRole || phone.simRole || "";
+    phone.dataPlan = values.dataPlan.trim() || phone.dataPlan || "";
   }
 
   if (isBlockedPhonePlatform(phone, values.platform)) {
@@ -301,9 +333,7 @@ function saveRecord(event) {
     contactPlatforms: contacts.map((item) => item.platform),
     contactPlatform: contacts[0]?.platform || "",
     nickname: contacts[0]?.nickname || "",
-    date: values.date,
-    loginCheckAfterDays: wholeNumber(values.loginCheckAfterDays),
-    registerableDate: values.registerableDate,
+    date: values.date,    registerableDate: values.registerableDate,
     actualCancelDate: values.actualCancelDate,
     note: values.note.trim(),
     loginCheckLogs: editingId ? cloneData(data.records.find((item) => item.id === editingId)?.loginCheckLogs || []) : [],
@@ -336,6 +366,8 @@ function render() {
   renderArchivedPhones(visible);
   renderFinance();
   renderCustomerAnalysis();
+  renderChannelSales();
+  renderAppSaleDetails();
 }
 
 function renderStats() {
@@ -513,6 +545,547 @@ function renderCustomerAnalysis() {
   );
 }
 
+function saveChannelSale(event) {
+  event.preventDefault();
+  const formData = new FormData(channelSaleForm);
+  const values = Object.fromEntries(formData.entries());
+  const product = String(values.product || "").trim();
+  const contacts = channelSaleContactsFromForm(formData);
+  const tradeContacts = channelSaleTradeContactsFromForm(formData);
+  const payments = channelSalePaymentsFromForm(formData);
+  const amount = moneyValue(values.amount);
+  if (!product) {
+    alert("请填写渠道产品。");
+    channelSaleForm.elements.product.focus();
+    return;
+  }
+  if (!amount) {
+    alert("请填写渠道售卖金额。");
+    channelSaleForm.elements.amount.focus();
+    return;
+  }
+  pushUndo();
+  if (!Array.isArray(data.channelSales)) data.channelSales = [];
+  data.channelSales.push({
+    id: makeId(),
+    date: values.date || formatDate(startOfToday()),
+    product,
+    contacts,
+    tradeContacts,
+    payments,
+    contactPlatforms: contacts.map((item) => item.platform),
+    tradePlatforms: tradeContacts.map((item) => item.platform),
+    customer: contacts.map((item) => item.nickname).filter(Boolean).join(" + "),
+    platform: contacts.map((item) => item.platform).filter(Boolean).join(" + "),
+    tradeCustomer: tradeContacts.map((item) => item.nickname).filter(Boolean).join(" + "),
+    tradePlatform: tradeContacts.map((item) => item.platform).filter(Boolean).join(" + "),
+    paymentText: channelSalePaymentText({ payments }),
+    amount,
+    cost: moneyValue(values.cost),
+    note: String(values.note || "").trim(),
+    updatedAt: new Date().toISOString(),
+  });
+  persist();
+  clearChannelSaleForm();
+  render();
+  toast("已记录渠道售卖情况");
+}
+
+function channelSaleContactsFromForm(formData) {
+  return ["微信", "QQ", "TG", "闲鱼"]
+    .filter((platform) => formData.getAll("contactPlatform").includes(platform))
+    .map((platform) => ({
+      platform,
+      nickname: String(formData.get(contactNicknameField(platform)) || "").trim(),
+    }));
+}
+
+function channelSaleTradeContactsFromForm(formData) {
+  return ["微信", "QQ", "TG", "闲鱼"]
+    .filter((platform) => formData.getAll("tradePlatform").includes(platform))
+    .map((platform) => ({
+      platform,
+      nickname: String(formData.get(tradeNicknameField(platform)) || "").trim(),
+    }));
+}
+
+function channelSalePaymentsFromForm(formData) {
+  const method = String(formData.get("paymentMethod") || "").trim();
+  const note = String(formData.get("paymentNote") || "").trim();
+  if (!method && !note) return [];
+  return [{ method, note }];
+}
+
+function channelSaleContacts(item) {
+  if (Array.isArray(item?.contacts)) return item.contacts.filter((contact) => contact.platform);
+  if (Array.isArray(item?.contactPlatforms)) {
+    return item.contactPlatforms.filter(Boolean).map((platform, index) => ({
+      platform,
+      nickname: index === 0 ? (item.customer || item.nickname || "") : "",
+    }));
+  }
+  if (item?.platform || item?.customer || item?.nickname) {
+    return [{ platform: item.platform || "", nickname: item.customer || item.nickname || "" }].filter((contact) => contact.platform || contact.nickname);
+  }
+  return [];
+}
+
+function channelSaleTradeContacts(item) {
+  if (Array.isArray(item?.tradeContacts)) return item.tradeContacts.filter((contact) => contact.platform);
+  if (Array.isArray(item?.tradePlatforms)) {
+    return item.tradePlatforms.filter(Boolean).map((platform, index) => ({
+      platform,
+      nickname: index === 0 ? (item.tradeCustomer || item.tradeNickname || "") : "",
+    }));
+  }
+  if (item?.tradePlatform || item?.tradeCustomer || item?.tradeNickname) {
+    return [{ platform: item.tradePlatform || "", nickname: item.tradeCustomer || item.tradeNickname || "" }].filter((contact) => contact.platform || contact.nickname);
+  }
+  return [];
+}
+
+function channelSaleCustomerText(item) {
+  return channelSaleContacts(item).map((contact) => contact.nickname).filter(Boolean).join(" + ");
+}
+
+function channelSalePlatformText(item) {
+  return channelSaleContacts(item).map((contact) => contact.platform).filter(Boolean).join(" + ");
+}
+
+function channelSaleTradeCustomerText(item) {
+  return channelSaleTradeContacts(item).map((contact) => contact.nickname).filter(Boolean).join(" + ");
+}
+
+function channelSaleTradePlatformText(item) {
+  return channelSaleTradeContacts(item).map((contact) => contact.platform).filter(Boolean).join(" + ");
+}
+
+function channelSalePayments(item) {
+  if (Array.isArray(item?.payments)) return item.payments.filter((payment) => payment.method);
+  if (Array.isArray(item?.paymentMethods)) {
+    return item.paymentMethods.filter(Boolean).map((method, index) => ({
+      method,
+      note: index === 0 ? (item.paymentNote || "") : "",
+    }));
+  }
+  if (item?.paymentMethod || item?.paymentNote) {
+    return [{ method: item.paymentMethod || "", note: item.paymentNote || "" }].filter((payment) => payment.method || payment.note);
+  }
+  return [];
+}
+
+function channelSalePaymentText(item) {
+  return channelSalePayments(item)
+    .map((payment) => [payment.method, payment.note].filter(Boolean).join(" / "))
+    .filter(Boolean)
+    .join(" + ");
+}
+function tradeNicknameField(platform) {
+  if (platform === "闲鱼") return "tradeNickname_xianyu";
+  if (platform === "QQ") return "tradeNickname_qq";
+  if (platform === "TG") return "tradeNickname_tg";
+  return "tradeNickname_wechat";
+}
+function clearChannelSaleForm() {
+  if (!channelSaleForm) return;
+  channelSaleForm.reset();
+  channelSaleForm.elements.date.value = formatDate(startOfToday());
+}
+
+function renderChannelSales() {
+  if (!els.channelSaleTable) return;
+  const rows = data.channelSales || [];
+  const totalAmount = sum(rows.map((item) => item.amount));
+  const totalCost = sum(rows.map((item) => item.cost));
+  const profit = totalAmount - totalCost;
+  els.channelSaleCount.textContent = rows.length;
+  els.channelSaleAmount.textContent = currency(totalAmount);
+  els.channelSaleProfit.textContent = currency(profit);
+  els.channelSaleProfit.classList.toggle("negative", profit < 0);
+
+  const productMap = new Map();
+  rows.forEach((item) => {
+    const product = item.product || "未填写产品";
+    if (!productMap.has(product)) {
+      productMap.set(product, { product, count: 0, amount: 0, cost: 0 });
+    }
+    const row = productMap.get(product);
+    row.count += 1;
+    row.amount += Number(item.amount || 0);
+    row.cost += Number(item.cost || 0);
+  });
+  const productRows = [...productMap.values()]
+    .map((row) => ({ ...row, profit: row.amount - row.cost }))
+    .sort((a, b) => b.amount - a.amount || b.count - a.count || a.product.localeCompare(b.product, "zh-CN"));
+
+  els.channelProductTable.innerHTML = financeTable(
+    ["产品", "成交次数", "销售金额", "成本", "利润"],
+    productRows.map((row) => [
+      row.product,
+      row.count,
+      currency(row.amount),
+      currency(row.cost),
+      { html: `<span class="${row.profit < 0 ? "negative" : ""}">${currency(row.profit)}</span>` },
+    ]),
+    5,
+    "暂无渠道产品销售数据",
+  );
+
+  const detailRows = [...rows].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  els.channelSaleTable.innerHTML = financeTable(
+    ["日期", "产品", "客户", "成交平台", "交易昵称", "交易平台", "金额", "支付方式", "成本", "利润", "备注", "操作"],
+    detailRows.map((item) => {
+      const itemProfit = Number(item.amount || 0) - Number(item.cost || 0);
+      return [
+        item.date || "未填写",
+        item.product || "未填写产品",
+        channelSaleCustomerText(item) || "未填写",
+        channelSalePlatformText(item) || "未填写",
+        channelSaleTradeCustomerText(item) || "未填写",
+        channelSaleTradePlatformText(item) || "未填写",
+        currency(item.amount),
+        channelSalePaymentText(item) || "未填写",
+        currency(item.cost),
+        { html: `<span class="${itemProfit < 0 ? "negative" : ""}">${currency(itemProfit)}</span>` },
+        item.note || "",
+        { html: `<button class="danger-button delete-channel-sale" type="button" data-id="${escapeAttr(item.id)}">删除</button>` },
+      ];
+    }),
+    12,
+    "暂无渠道售卖明细",
+  );
+
+  els.channelSaleTable.querySelectorAll(".delete-channel-sale").forEach((button) => {
+    button.addEventListener("click", () => deleteChannelSale(button.dataset.id));
+  });
+}
+
+function deleteChannelSale(id) {
+  if (!confirm("确定删除这条渠道售卖记录？")) return;
+  pushUndo();
+  data.channelSales = (data.channelSales || []).filter((item) => item.id !== id);
+  persist();
+  render();
+  toast("已删除渠道售卖记录");
+}
+function sameAppName(left, right) {
+  return String(left || "").trim().toLowerCase() === String(right || "").trim().toLowerCase();
+}
+
+function uniqueAppSaleDetails(items) {
+  const byApp = new Map();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = String(item.app || "").trim().toLowerCase();
+    if (!key) return;
+    const current = byApp.get(key);
+    if (!current || String(item.updatedAt || "") >= String(current.updatedAt || "")) byApp.set(key, item);
+  });
+  return [...byApp.values()];
+}
+
+function renderAppSaleChannelOptions() {
+  appSaleChannels = uniqueList(Array.isArray(appSaleChannels) && appSaleChannels.length ? appSaleChannels : [...defaultAppSaleChannels]);
+  if (els.appSaleChannelOptionSelect) {
+    const current = els.appSaleChannelOptionSelect.value;
+    els.appSaleChannelOptionSelect.innerHTML = appSaleChannels.map((name) => option(name)).join("");
+    if (current && appSaleChannels.includes(current)) els.appSaleChannelOptionSelect.value = current;
+  }
+  syncVisibleAppSaleChannelSelect();
+}
+
+function syncVisibleAppSaleChannelSelect() {
+  const select = els.appSaleChannelRows?.querySelector(".app-sale-channel-select");
+  if (!select) return;
+  const channel = els.appSaleChannelOptionSelect?.value || select.value || appSaleChannels[0] || "";
+  select.innerHTML = appSaleChannels.map((name) => option(name)).join("");
+  if (channel && appSaleChannels.includes(channel)) select.value = channel;
+}
+
+function fillSelectedAppSaleChannelDetail() {
+  if (!appSaleDetailForm) return;
+  const app = String(appSaleDetailForm.elements.app.value || "").trim();
+  const channel = els.appSaleChannelOptionSelect?.value || appSaleChannels[0] || "";
+  const item = (data.appSaleDetails || []).find((detail) => sameAppName(detail.app, app));
+  const detail = normalizeAppSaleChannelDetails(item || {}).find((entry) => sameChannelName(entry.channel, channel)) || { channel };
+  renderAppSaleChannelRows([detail]);
+}
+
+function sameChannelName(left, right) {
+  return String(left || "").trim().toLowerCase() === String(right || "").trim().toLowerCase();
+}
+function addAppSaleChannelOption() {
+  const name = prompt("输入新的购买渠道名称");
+  const channelName = String(name || "").trim();
+  if (!channelName) return;
+  if (appSaleChannels.includes(channelName)) {
+    alert("这个渠道已经存在。");
+    return;
+  }
+  pushUndo();
+  appSaleChannels = uniqueList([...appSaleChannels, channelName]);
+  data.appSaleChannels = appSaleChannels;
+  persist();
+  renderAppSaleChannelOptions();
+  if (els.appSaleChannelOptionSelect) els.appSaleChannelOptionSelect.value = channelName;
+  toast("已增加购买渠道");
+}
+
+function deleteAppSaleChannelOption() {
+  const channelName = els.appSaleChannelOptionSelect?.value;
+  if (!channelName) return;
+  if (!confirm(`确定删除购买渠道「${channelName}」吗？已保存明细不会被删除，只是不再出现在下拉菜单里。`)) return;
+  pushUndo();
+  appSaleChannels = appSaleChannels.filter((item) => item !== channelName);
+  data.appSaleChannels = appSaleChannels;
+  persist();
+  renderAppSaleChannelOptions();
+  toast("已删除购买渠道选项");
+}
+
+function emptyAppSaleChannelDetail() {
+  return {
+    id: makeId(),
+    channel: appSaleChannels[0] || defaultAppSaleChannels[0],
+    costRange: "",
+    priceRange: "",
+    safeCancelTime: "",
+    reregisterTime: "",
+    deliveryPoints: "",
+    cancelPoints: "",
+    reregisterPoints: "",
+    afterSaleBoundary: "",
+  };
+}
+
+function addAppSaleChannelRow(detail = emptyAppSaleChannelDetail()) {
+  if (!els.appSaleChannelRows) return;
+  const item = normalizeAppSaleChannelDetail(detail);
+  const row = document.createElement("section");
+  row.className = "app-sale-channel-row";
+  row.dataset.id = item.id || makeId();
+  row.innerHTML = `
+    <div class="channel-row-head">
+      <label>购买渠道
+        <select class="app-sale-channel-select" data-field="channel">${appSaleChannels.map((name) => option(name)).join("")}</select>
+      </label>
+      <button class="danger-button delete-app-sale-channel-row" type="button">删除本条</button>
+    </div>
+    <div class="split">
+      <label>成本区间<input data-field="costRange" placeholder="例如：8-10" /></label>
+      <label>售卖区间<input data-field="priceRange" placeholder="例如：12.5-18" /></label>
+    </div>
+    <div class="split">
+      <label>安全注销时间<input data-field="safeCancelTime" placeholder="例如：3天 / 7天" /></label>
+      <label>重新注册时间<input data-field="reregisterTime" placeholder="例如：24小时 / 3天" /></label>
+    </div>
+    <label>交付要点<textarea data-field="deliveryPoints" rows="2"></textarea></label>
+    <label>注销要点<textarea data-field="cancelPoints" rows="2"></textarea></label>
+    <label>再次注册要点<textarea data-field="reregisterPoints" rows="2"></textarea></label>
+    <label>售后边界<textarea data-field="afterSaleBoundary" rows="2"></textarea></label>
+  `;
+  els.appSaleChannelRows.appendChild(row);
+  row.querySelector('[data-field="channel"]').value = item.channel || appSaleChannels[0] || "";
+  ["costRange", "priceRange", "safeCancelTime", "reregisterTime", "deliveryPoints", "cancelPoints", "reregisterPoints", "afterSaleBoundary"].forEach((field) => {
+    const input = row.querySelector(`[data-field="${field}"]`);
+    if (input) input.value = item[field] || "";
+  });
+  row.querySelector(".delete-app-sale-channel-row").addEventListener("click", () => {
+    row.remove();
+    if (!els.appSaleChannelRows.children.length) addAppSaleChannelRow();
+  });
+}
+
+function renderAppSaleChannelRows(details = []) {
+  if (!els.appSaleChannelRows) return;
+  els.appSaleChannelRows.innerHTML = "";
+  const selectedChannel = els.appSaleChannelOptionSelect?.value || appSaleChannels[0] || defaultAppSaleChannels[0];
+  const detail = details.find((item) => sameChannelName(item.channel, selectedChannel)) || details[0] || { ...emptyAppSaleChannelDetail(), channel: selectedChannel };
+  addAppSaleChannelRow({ ...detail, channel: detail.channel || selectedChannel });
+  syncVisibleAppSaleChannelSelect();
+}
+
+function collectAppSaleChannelDetails() {
+  if (!els.appSaleChannelRows) return [];
+  return [...els.appSaleChannelRows.querySelectorAll(".app-sale-channel-row")]
+    .map((row) => {
+      const value = (field) => String(row.querySelector(`[data-field="${field}"]`)?.value || "").trim();
+      return normalizeAppSaleChannelDetail({
+        id: row.dataset.id || makeId(),
+        channel: els.appSaleChannelOptionSelect?.value || value("channel"),
+        costRange: value("costRange"),
+        priceRange: value("priceRange"),
+        safeCancelTime: value("safeCancelTime"),
+        reregisterTime: value("reregisterTime"),
+        deliveryPoints: value("deliveryPoints"),
+        cancelPoints: value("cancelPoints"),
+        reregisterPoints: value("reregisterPoints"),
+        afterSaleBoundary: value("afterSaleBoundary"),
+      });
+    })
+    .filter((item) => item.channel || item.costRange || item.priceRange || item.safeCancelTime || item.reregisterTime || item.deliveryPoints || item.cancelPoints || item.reregisterPoints || item.afterSaleBoundary);
+}
+
+function appSaleChannelSummary(item) {
+  const details = normalizeAppSaleChannelDetails(item);
+  return details.map((detail) => detail.channel).filter(Boolean).join("\n") || item.purchaseChannels || "";
+}
+
+function appSalePricingSummary(item) {
+  const details = normalizeAppSaleChannelDetails(item);
+  return details.map((detail) => {
+    const parts = [];
+    if (detail.costRange) parts.push(`成本：${detail.costRange}`);
+    if (detail.priceRange) parts.push(`售卖：${detail.priceRange}`);
+    return parts.length ? `${detail.channel || "渠道"}：${parts.join("，")}` : "";
+  }).filter(Boolean).join("\n") || item.channelPricing || "";
+}
+
+function appSaleFieldSummary(item, field) {
+  const details = normalizeAppSaleChannelDetails(item);
+  return details.map((detail) => detail[field] ? `${detail.channel || "渠道"}：${detail[field]}` : "").filter(Boolean).join("\n") || item[field] || "";
+}
+
+function saveAppSaleDetail(event) {
+  event.preventDefault();
+  const app = String(appSaleDetailForm.elements.app.value || "").trim();
+  if (!app) {
+    alert("请填写 APP 名称。");
+    appSaleDetailForm.elements.app.focus();
+    return;
+  }
+  const channelDetails = collectAppSaleChannelDetails();
+  if (!channelDetails.length) {
+    alert("请至少填写一条购买渠道明细。");
+    addAppSaleChannelRow();
+    return;
+  }
+  if (!Array.isArray(data.appSaleDetails)) data.appSaleDetails = [];
+  const existing = data.appSaleDetails.find((item) => item.id === editingAppSaleDetailId) || data.appSaleDetails.find((item) => sameAppName(item.app, app));
+  const mergedByChannel = new Map();
+  normalizeAppSaleChannelDetails(existing || {}).forEach((item) => {
+    const key = String(item.channel || "").trim().toLowerCase();
+    if (key) mergedByChannel.set(key, item);
+  });
+  channelDetails.forEach((item) => {
+    const key = String(item.channel || "").trim().toLowerCase();
+    if (key) mergedByChannel.set(key, item);
+  });
+  const mergedChannelDetails = [...mergedByChannel.values()];
+  const detail = {
+    id: existing?.id || makeId(),
+    app,
+    channelDetails: mergedChannelDetails,
+    purchaseChannels: mergedChannelDetails.map((item) => item.channel).filter(Boolean).join("\n"),
+    channelPricing: mergedChannelDetails.map((item) => [item.channel, item.costRange ? `成本：${item.costRange}` : "", item.priceRange ? `售卖：${item.priceRange}` : ""].filter(Boolean).join(" / ")).filter(Boolean).join("\n"),
+    safeCancelTime: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "safeCancelTime"),
+    reregisterTime: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "reregisterTime"),
+    deliveryPoints: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "deliveryPoints"),
+    cancelPoints: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "cancelPoints"),
+    reregisterPoints: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "reregisterPoints"),
+    afterSaleBoundary: appSaleFieldSummary({ channelDetails: mergedChannelDetails }, "afterSaleBoundary"),
+    updatedAt: new Date().toISOString(),
+  };
+  pushUndo();
+  appSaleChannels = uniqueList([...appSaleChannels, ...mergedChannelDetails.map((item) => item.channel)]);
+  data.appSaleChannels = appSaleChannels;
+  const index = data.appSaleDetails.findIndex((item) => item.id === detail.id || sameAppName(item.app, app));
+  if (index >= 0) data.appSaleDetails[index] = detail;
+  else data.appSaleDetails.push(detail);
+  data.appSaleDetails = uniqueAppSaleDetails(data.appSaleDetails);
+  persist();
+  clearAppSaleDetailForm();
+  render();
+  toast("已保存 APP 售卖要点");
+}
+
+function clearAppSaleDetailForm() {
+  editingAppSaleDetailId = null;
+  if (!appSaleDetailForm) return;
+  appSaleDetailForm.reset();
+  renderAppSaleChannelRows();
+}
+
+function fillAppSaleDetailForm(item) {
+  if (!item || !appSaleDetailForm) return;
+  editingAppSaleDetailId = item.id;
+  appSaleDetailForm.elements.app.value = item.app || "";
+  renderAppSaleChannelRows(normalizeAppSaleChannelDetails(item));
+}
+
+function fillAppSaleDetailFromSelectedApp() {
+  if (!appSaleDetailForm) return;
+  const app = String(appSaleDetailForm.elements.app.value || "").trim();
+  const item = (data.appSaleDetails || []).find((detail) => sameAppName(detail.app, app));
+  if (!item) {
+    editingAppSaleDetailId = null;
+    return;
+  }
+  fillAppSaleDetailForm(item);
+}
+
+function renderAppSaleDetails() {
+  if (!els.appSaleDetailTable) return;
+  const appItems = [...(data.appSaleDetails || [])]
+    .sort((a, b) => String(a.app || "").localeCompare(String(b.app || ""), "zh-CN"));
+  renderAppSaleDetailFilter(appItems);
+  const selectedApp = appSaleDetailFilterValue === "all" ? "" : appSaleDetailFilterValue;
+  const rows = appItems
+    .filter((item) => !selectedApp || sameAppName(item.app, selectedApp))
+    .flatMap((item) => {
+      const details = normalizeAppSaleChannelDetails(item);
+      return (details.length ? details : [emptyAppSaleChannelDetail()]).map((detail) => ({ item, detail }));
+    });
+  els.appSaleDetailTable.innerHTML = financeTable(
+    ["APP", "购买渠道", "成本区间", "售卖区间", "安全注销", "重新注册", "交付要点", "注销要点", "再次注册", "售后边界", "操作"],
+    rows.map(({ item, detail }) => [
+      item.app || "未填写",
+      detail.channel || "未填写",
+      detail.costRange || "",
+      detail.priceRange || "",
+      detail.safeCancelTime || "",
+      detail.reregisterTime || "",
+      detail.deliveryPoints || "",
+      detail.cancelPoints || "",
+      detail.reregisterPoints || "",
+      detail.afterSaleBoundary || "",
+      { html: `<button class="text-button edit-app-sale-detail" type="button" data-id="${escapeAttr(item.id)}" data-channel="${escapeAttr(detail.channel || "")}">编辑</button><button class="danger-button delete-app-sale-detail" type="button" data-id="${escapeAttr(item.id)}">删除APP</button>` },
+    ]),
+    11,
+    selectedApp ? "这个 APP 暂无售卖要点数据" : "暂无 APP 售卖要点数据",
+  );
+  els.appSaleDetailTable.querySelectorAll(".edit-app-sale-detail").forEach((button) => {
+    button.addEventListener("click", () => editAppSaleDetail(button.dataset.id, button.dataset.channel));
+  });
+  els.appSaleDetailTable.querySelectorAll(".delete-app-sale-detail").forEach((button) => {
+    button.addEventListener("click", () => deleteAppSaleDetail(button.dataset.id));
+  });
+}
+
+function renderAppSaleDetailFilter(items) {
+  if (!els.appSaleDetailFilter) return;
+  const apps = uniqueList(items.map((item) => item.app));
+  if (appSaleDetailFilterValue !== "all" && !apps.some((app) => sameAppName(app, appSaleDetailFilterValue))) {
+    appSaleDetailFilterValue = "all";
+  }
+  els.appSaleDetailFilter.innerHTML = option("全部APP", "all") + apps.map((app) => option(app)).join("");
+  els.appSaleDetailFilter.value = appSaleDetailFilterValue;
+}
+function editAppSaleDetail(id, channel = "") {
+  const item = (data.appSaleDetails || []).find((detail) => detail.id === id);
+  if (!item || !appSaleDetailForm) return;
+  if (channel && els.appSaleChannelOptionSelect) els.appSaleChannelOptionSelect.value = channel;
+  fillAppSaleDetailForm(item);
+  appSaleDetailForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function deleteAppSaleDetail(id) {
+  if (!confirm("确定删除这个 APP 售卖要点？")) return;
+  pushUndo();
+  data.appSaleDetails = (data.appSaleDetails || []).filter((item) => item.id !== id);
+  persist();
+  clearAppSaleDetailForm();
+  render();
+  toast("已删除 APP 售卖要点");
+}
 function customerAnalysisRows() {
   const customers = new Map();
   paidRecords().forEach((item) => {
@@ -860,6 +1433,8 @@ function phoneLookupDetail(phone, recordCount) {
         <div><dt>\u6ce8\u518c\u65f6\u95f4</dt><dd>${escapeHtml(phone.registrationDate || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u8fd0\u8425\u5546</dt><dd>${escapeHtml(phone.carrier || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u5361\u7c7b\u578b</dt><dd>${escapeHtml(cardCategoryLabel(phone.cardCategory || inferCardCategory(phone.carrier)))}</dd></div>
+        <div><dt>\u4e3b\u526f\u5361</dt><dd>${escapeHtml(phone.simRole || "\u672a\u586b\u5199")}</dd></div>
+        <div><dt>\u5957\u9910\u6d41\u91cf</dt><dd>${escapeHtml(phone.dataPlan || "\u672a\u586b\u5199")}</dd></div>
         <div><dt>\u6210\u672c\u660e\u7ec6</dt><dd>${escapeHtml(costBreakdown(phone))}</dd></div>
         <div><dt>\u603b\u6210\u672c</dt><dd>${currency(phoneTotalCost(phone))}</dd></div>
         <div><dt>\u5e73\u53f0\u8bb0\u5f55</dt><dd>\u5f53\u524d\u7b5b\u9009\u4e0b ${recordCount} \u6761</dd></div>
@@ -872,7 +1447,7 @@ function phoneLookupDetail(phone, recordCount) {
 }
 
 function phoneLookupLabel(phone) {
-  return [phone.number, phone.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "", phone.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "", phone.carrier].filter(Boolean).join(" / ");
+  return [phone.number, phone.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "", phone.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "", phone.simRole, phone.dataPlan, phone.carrier].filter(Boolean).join(" / ");
 }
 
 function matrixRechargeControl(phone) {
@@ -894,6 +1469,8 @@ function matrixDeviceTags(phone) {
     phone?.registrationDate ? `\u6ce8\u518c ${phone.registrationDate}` : "",
     phone?.deviceNo ? `\u8bbe\u5907 ${phone.deviceNo}` : "",
     phone?.slotNo ? `\u5361\u69fd ${phone.slotNo}` : "",
+    phone?.simRole || "",
+    phone?.dataPlan ? `\u6d41\u91cf ${phone.dataPlan}` : "",
   ].filter(Boolean).map((item) => `<span class="matrix-phone-tag">${escapeHtml(item)}</span>`).join("");
 }
 
@@ -989,7 +1566,7 @@ function filteredRecords() {
   const status = selectedStatusFilter();
   return data.records.filter((item) => {
     const phone = phoneById(item.phoneId);
-    const haystack = [phone?.number, phoneSummary(phone), phone?.registrationDate, phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
+    const haystack = [phone?.number, phoneSummary(phone), phone?.registrationDate, phone?.personName, phone?.carrier, phone?.deviceNo, phone?.slotNo, phone?.simRole, phone?.dataPlan, item.platform, contactText(item), item.date, loginCheckText(item), registerableText(item), item.actualCancelDate, statusNoteText(item), item.note, statusLabel(item.status)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -1008,7 +1585,7 @@ function phoneMatches(phone, records) {
   if (carrier && phone?.carrier !== carrier) return false;
   const recordFilterActive = Boolean(matrixQuickFilter || selectedStatusFilter() !== "all");
   const hasVisibleRecord = records.some((item) => item.phoneId === phone.id);
-  const phoneTextMatches = [phone.number, phoneSummary(phone), phone.registrationDate, phone.personName, phone.carrier, phone.deviceNo, phone.slotNo]
+  const phoneTextMatches = [phone.number, phoneSummary(phone), phone.registrationDate, phone.personName, phone.carrier, phone.deviceNo, phone.slotNo, phone.simRole, phone.dataPlan]
     .filter(Boolean)
     .join(" ")
     .toLowerCase()
@@ -1063,9 +1640,7 @@ function editRecord(id) {
   form.elements.status.value = normalizeStatus(item.status);
   form.elements.price.value = normalizeStatus(item.status) === "testing" ? item.statusNote || "" : item.price || "";
   setContactRows(contactEntries(item));
-  form.elements.date.value = item.date || "";
-  form.elements.loginCheckAfterDays.value = item.loginCheckAfterDays || "";
-  form.elements.registerableDate.value = item.registerableDate || "";
+  form.elements.date.value = item.date || "";  form.elements.registerableDate.value = item.registerableDate || "";
   form.elements.actualCancelDate.value = item.actualCancelDate || "";
   form.elements.note.value = item.note || "";
   form.querySelector(".primary-button").textContent = "\u66f4\u65b0\u8bb0\u5f55";
@@ -1094,6 +1669,8 @@ function fillPhoneFields(phone) {
   form.elements.cardCategory.value = phone.cardCategory || inferCardCategory(phone.carrier) || "";
   form.elements.deviceNo.value = phone.deviceNo || "";
   form.elements.slotNo.value = phone.slotNo || "";
+  form.elements.simRole.value = phone.simRole || "";
+  form.elements.dataPlan.value = phone.dataPlan || "";
   renderFormCost();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1189,9 +1766,7 @@ function copyRecordTemplate(id) {
     contactPlatforms: cloneData(contactEntries(item).map((contact) => contact.platform)),
     contactPlatform: contactEntries(item)[0]?.platform || "",
     nickname: contactEntries(item)[0]?.nickname || "",
-    date: item.date,
-    loginCheckAfterDays: item.loginCheckAfterDays,
-    registerableDate: item.registerableDate,
+    date: item.date,    registerableDate: item.registerableDate,
     actualCancelDate: item.actualCancelDate,
     note: item.note,
     loginCheckLogs: cloneData(item.loginCheckLogs || []),
@@ -1336,7 +1911,9 @@ function pushUndo() {
   undoStack.push({
     data: cloneData(data),
     platforms: cloneData(platforms),
+    appSaleChannels: cloneData(appSaleChannels),
     editingId,
+    editingAppSaleDetailId,
   });
   if (undoStack.length > 50) undoStack.shift();
 }
@@ -1349,8 +1926,11 @@ function undoLastAction() {
   }
   data = normalizeData(snapshot.data);
   platforms = cloneData(snapshot.platforms);
+  appSaleChannels = cloneData(snapshot.appSaleChannels || data.appSaleChannels || defaultAppSaleChannels);
   data.platforms = platforms;
+  data.appSaleChannels = appSaleChannels;
   editingId = snapshot.editingId;
+  editingAppSaleDetailId = snapshot.editingAppSaleDetailId || null;
   fillOptions();
   persist();
   clearForm();
@@ -1403,6 +1983,7 @@ function persist() {
 
 function persistLocalOnly() {
   data.platforms = platforms;
+  data.appSaleChannels = appSaleChannels;
   localStorage.setItem(storageKey, JSON.stringify(data));
 }
 
@@ -1426,6 +2007,7 @@ async function setupGitHubSync() {
       pushUndo();
       data = remote;
       platforms = data.platforms || [...defaultPlatforms];
+      appSaleChannels = data.appSaleChannels || [...defaultAppSaleChannels];
       fillOptions();
       persist();
       render();
@@ -1628,6 +2210,7 @@ function importData(event) {
       pushUndo();
       data = normalizeData(next);
       platforms = data.platforms;
+      appSaleChannels = data.appSaleChannels || [...defaultAppSaleChannels];
       fillOptions();
       persist();
       render();
@@ -1763,7 +2346,7 @@ function phoneCancelDate(phone) {
 }
 
 function phoneSummary(phone) {
-  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", cardCategoryLabel(phone?.cardCategory || inferCardCategory(phone?.carrier)), phone?.carrier, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" 路 ");
+  return [phone?.personName ? `\u59d3\u540d ${phone.personName}` : "", cardCategoryLabel(phone?.cardCategory || inferCardCategory(phone?.carrier)), phone?.carrier, phone?.simRole, phone?.dataPlan, deviceSummary(phone), `\u6210\u672c ${currency(phoneTotalCost(phone))}`].filter(Boolean).join(" 路 ");
 }
 
 function matrixPhoneSummary(phone) {
@@ -1948,24 +2531,7 @@ function formatDate(date) {
   return `${year}-${month}-${day}`;
 }
 
-function renderReminderHints() {
-  renderFormLoginCheckHint();
-}
-
-function renderFormLoginCheckHint() {
-  const date = form.elements.date.value;
-  const days = wholeNumber(form.elements.loginCheckAfterDays.value);
-  if (!date || !days) {
-    els.formLoginCheckHint.textContent = "\u672a\u8bbe\u7f6e\u767b\u5f55\u67e5\u770b\u63d0\u9192";
-    els.formLoginCheckHint.classList.remove("due");
-    return;
-  }
-  const state = loginCheckState({ date, loginCheckAfterDays: days });
-  els.formLoginCheckHint.textContent = state.isDue
-    ? `\u5df2\u5230\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`
-    : `\u53ef\u767b\u5f55\u67e5\u770b\u65f6\u95f4\uff1a${state.dueDate}`;
-  els.formLoginCheckHint.classList.toggle("due", state.isDue);
-}
+function renderReminderHints() {}
 
 function inferContactPlatform(value = "") {
   const text = String(value).toLowerCase();
@@ -2010,8 +2576,13 @@ function normalizeData(next) {
     ...(Array.isArray(next.platforms) ? next.platforms : []),
     ...(Array.isArray(next.records) ? next.records.map((item) => item.platform) : []),
   ].filter(Boolean));
+  const mergedAppSaleChannels = uniqueList([
+    ...(Array.isArray(next.appSaleChannels) ? next.appSaleChannels : [...defaultAppSaleChannels]),
+    ...(Array.isArray(next.appSaleDetails) ? next.appSaleDetails.flatMap((item) => normalizeAppSaleChannelDetails(item).map((detail) => detail.channel)) : []),
+  ]);
   return {
     platforms: mergedPlatforms,
+    appSaleChannels: mergedAppSaleChannels,
     phones: next.phones.map((phone) => ({
       ...phone,
       cardFee: moneyValue(phone.cardFee),
@@ -2024,6 +2595,8 @@ function normalizeData(next) {
       cardCategory: phone.cardCategory || inferCardCategory(phone.carrier || phone.tag || ""),
       deviceNo: phone.deviceNo || "",
       slotNo: phone.slotNo || "",
+      simRole: phone.simRole || "",
+      dataPlan: phone.dataPlan || phone.packageFlow || phone.trafficPlan || "",
       phoneStatus: phone.phoneStatus || "active",
       blockReason: phone.blockReason || "",
       archivedAt: phone.archivedAt || "",
@@ -2048,9 +2621,94 @@ function normalizeData(next) {
       registerableDate: item.registerableDate || "",
       actualCancelDate: item.actualCancelDate || "",
     })),
+    channelSales: (Array.isArray(next.channelSales) ? next.channelSales : []).map((item) => ({
+      ...item,
+      id: item.id || makeId(),
+      date: item.date || formatDate(startOfToday()),
+      product: item.product || "",
+      contacts: channelSaleContacts(item),
+      tradeContacts: channelSaleTradeContacts(item),
+      payments: channelSalePayments(item),
+      paymentMethods: channelSalePayments(item).map((payment) => payment.method),
+      paymentText: channelSalePaymentText(item),
+      contactPlatforms: channelSaleContacts(item).map((contact) => contact.platform),
+      tradePlatforms: channelSaleTradeContacts(item).map((contact) => contact.platform),
+      customer: channelSaleCustomerText(item),
+      platform: channelSalePlatformText(item),
+      tradeCustomer: channelSaleTradeCustomerText(item),
+      tradePlatform: channelSaleTradePlatformText(item),
+      amount: moneyValue(item.amount ?? item.price),
+      cost: moneyValue(item.cost),
+      note: item.note || "",
+      updatedAt: item.updatedAt || new Date().toISOString(),
+    })),
+    appSaleDetails: uniqueAppSaleDetails((Array.isArray(next.appSaleDetails) ? next.appSaleDetails : []).map((item) => {
+      const channelDetails = normalizeAppSaleChannelDetails(item);
+      return {
+        ...item,
+        id: item.id || makeId(),
+        app: item.app || item.platform || "",
+        channelDetails,
+        purchaseChannels: channelDetails.map((detail) => detail.channel).filter(Boolean).join("\n") || item.purchaseChannels || legacyPurchaseChannels(item),
+        channelPricing: channelDetails.map((detail) => [detail.channel, detail.costRange ? `成本：${detail.costRange}` : "", detail.priceRange ? `售卖：${detail.priceRange}` : ""].filter(Boolean).join(" / ")).filter(Boolean).join("\n") || item.channelPricing || legacyChannelPricing(item),
+        safeCancelTime: item.safeCancelTime || appSaleFieldSummary({ channelDetails }, "safeCancelTime"),
+        reregisterTime: item.reregisterTime || appSaleFieldSummary({ channelDetails }, "reregisterTime"),
+        deliveryPoints: item.deliveryPoints || appSaleFieldSummary({ channelDetails }, "deliveryPoints"),
+        cancelPoints: item.cancelPoints || appSaleFieldSummary({ channelDetails }, "cancelPoints"),
+        reregisterPoints: item.reregisterPoints || appSaleFieldSummary({ channelDetails }, "reregisterPoints"),
+        afterSaleBoundary: item.afterSaleBoundary || item.riskNotes || appSaleFieldSummary({ channelDetails }, "afterSaleBoundary"),
+        updatedAt: item.updatedAt || new Date().toISOString(),
+      };
+    })),
   };
 }
 
+function normalizeAppSaleChannelDetail(item = {}) {
+  return {
+    id: item.id || makeId(),
+    channel: item.channel || item.name || item.purchaseChannel || defaultAppSaleChannels[0],
+    costRange: item.costRange || item.cost || "",
+    priceRange: item.priceRange || item.price || "",
+    safeCancelTime: item.safeCancelTime || "",
+    reregisterTime: item.reregisterTime || "",
+    deliveryPoints: item.deliveryPoints || "",
+    cancelPoints: item.cancelPoints || "",
+    reregisterPoints: item.reregisterPoints || "",
+    afterSaleBoundary: item.afterSaleBoundary || item.riskNotes || "",
+  };
+}
+
+function normalizeAppSaleChannelDetails(item = {}) {
+  if (Array.isArray(item.channelDetails) && item.channelDetails.length) {
+    return item.channelDetails.map(normalizeAppSaleChannelDetail);
+  }
+  const legacyText = [item.purchaseChannels || legacyPurchaseChannels(item), item.channelPricing || legacyChannelPricing(item)].filter(Boolean).join("\n");
+  if (!legacyText && !item.safeCancelTime && !item.reregisterTime && !item.deliveryPoints && !item.cancelPoints && !item.reregisterPoints && !item.afterSaleBoundary && !item.riskNotes) return [];
+  const firstLine = String(item.purchaseChannels || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean)[0] || "";
+  const channel = firstLine.includes("：") ? firstLine.split("：")[0].trim() : firstLine.includes(":") ? firstLine.split(":")[0].trim() : defaultAppSaleChannels[0];
+  return [normalizeAppSaleChannelDetail({
+    channel,
+    costRange: item.costRange || "",
+    priceRange: item.priceRange || "",
+    safeCancelTime: item.safeCancelTime || "",
+    reregisterTime: item.reregisterTime || "",
+    deliveryPoints: [item.purchaseChannels || legacyPurchaseChannels(item), item.channelPricing || legacyChannelPricing(item), item.deliveryPoints].filter(Boolean).join("\n"),
+    cancelPoints: item.cancelPoints || "",
+    reregisterPoints: item.reregisterPoints || "",
+    afterSaleBoundary: item.afterSaleBoundary || item.riskNotes || "",
+  })];
+}
+function legacyPurchaseChannels(item) {
+  return [item.customerType ? `适合客户：${item.customerType}` : "", item.sellingPoints ? `原售卖要点：${item.sellingPoints}` : ""]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function legacyChannelPricing(item) {
+  return [item.costRange ? `成本区间：${item.costRange}` : "", item.priceRange ? `售价区间：${item.priceRange}` : ""]
+    .filter(Boolean)
+    .join("\n");
+}
 function earliestPhoneRecordDate(records, phoneId) {
   return (Array.isArray(records) ? records : [])
     .filter((item) => item.phoneId === phoneId && item.date)

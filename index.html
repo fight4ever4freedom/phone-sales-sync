@@ -126,6 +126,20 @@
                 <input name="slotNo" placeholder="&#20363;&#22914; 1" />
               </label>
             </div>
+            <div class="split">
+              <label>
+                &#20027;&#21345; / &#21103;&#21345;
+                <select name="simRole">
+                  <option value="">&#26410;&#36873;&#25321;</option>
+                  <option value="&#20027;&#21345;">&#20027;&#21345;</option>
+                  <option value="&#21103;&#21345;">&#21103;&#21345;</option>
+                </select>
+              </label>
+              <label>
+                &#22871;&#39184;&#27969;&#37327;&#24773;&#20917;
+                <input name="dataPlan" placeholder="&#20363;&#22914; 30G / &#26080;&#27969;&#37327; / &#19981;&#38480;&#37327;" />
+              </label>
+            </div>
             <label>
               APP
               <div class="inline-add">
@@ -167,17 +181,10 @@
                 <input name="contactNickname_tg" placeholder="TG&#26165;&#31216;" />
               </label>
             </div>
-            <div class="split">
-              <label>
-                &#26085;&#26399;
-                <input name="date" type="date" />
-              </label>
-              <label>
-                &#20960;&#22825;&#21518;&#21487;&#30331;&#24405;&#26597;&#30475;
-                <input name="loginCheckAfterDays" inputmode="numeric" placeholder="&#20363;&#22914; 3" />
-              </label>
-            </div>
-            <div class="reminder-line" id="formLoginCheckHint">&#26410;&#35774;&#32622;&#30331;&#24405;&#26597;&#30475;&#25552;&#37266;</div>
+            <label>
+              &#26085;&#26399;
+              <input name="date" type="date" />
+            </label>
             <label>
               &#20960;&#21495;&#21487;&#27880;&#20876;
               <input name="registerableDate" type="date" />
@@ -197,7 +204,7 @@
         <section class="main-panel">
           <div class="toolbar">
             <div class="search">
-              <span>鈱?/span>
+              <span>&#128269;</span>
               <input id="searchInput" placeholder="&#25628;&#32034;&#25163;&#26426;&#21495;&#12289;APP&#12289;&#25104;&#20132;&#24179;&#21488;&#12289;&#26165;&#31216;&#12289;&#22791;&#27880;" />
             </div>
             <input id="phoneFilter" list="phoneFilterOptions" placeholder="&#20840;&#37096;&#25163;&#26426;&#21495;" aria-label="phone filter" />
@@ -216,6 +223,8 @@
             <button class="tab" data-view="archivedPhones" type="button">&#27880;&#38144;&#25163;&#26426;&#21495;</button>
             <button class="tab" data-view="finance" type="button">&#36130;&#21153;</button>
             <button class="tab" data-view="customers" type="button">&#23458;&#25143;&#20998;&#26512;</button>
+            <button class="tab" data-view="channelSales" type="button">&#28192;&#36947;&#21806;&#21334;&#24773;&#20917;</button>
+            <button class="tab" data-view="appSaleDetails" type="button">APP&#21806;&#21334;&#35201;&#28857;&#35814;&#24773;</button>
           </div>
 
           <div id="matrixView" class="view active">
@@ -300,6 +309,172 @@
             </section>
             <div class="table-wrap customer-table-wrap">
               <table id="customerAnalysisTable"></table>
+            </div>
+          </div>
+          <div id="channelSalesView" class="view">
+            <section class="channel-summary" aria-label="channel sales summary">
+              <article>
+                <span>&#28192;&#36947;&#25104;&#20132;&#27425;&#25968;</span>
+                <strong id="channelSaleCount">0</strong>
+              </article>
+              <article>
+                <span>&#28192;&#36947;&#21806;&#21334;&#37329;&#39069;</span>
+                <strong id="channelSaleAmount">&#165;0</strong>
+              </article>
+              <article>
+                <span>&#28192;&#36947;&#21033;&#28070;</span>
+                <strong id="channelSaleProfit">&#165;0</strong>
+              </article>
+            </section>
+
+            <form id="channelSaleForm" class="channel-sale-form">
+              <div class="split">
+                <label>
+                  &#26085;&#26399;
+                  <input name="date" type="date" required />
+                </label>
+                <label>
+                  &#20135;&#21697;
+                  <input name="product" list="channelProductOptions" placeholder="398&#28192;&#36947;&#36164;&#28304;" required />
+                  <datalist id="channelProductOptions">
+                    <option value="398&#28192;&#36947;&#36164;&#28304;"></option>
+                    <option value="1280&#24466;&#24351;&#36164;&#28304;"></option>
+                    <option value="&#23450;&#21046;&#36134;&#21495;"></option>
+                    <option value="&#26680;&#24515;&#28192;&#36947;"></option>
+                  </datalist>
+                </label>
+              </div>
+              <div class="channel-contact-grid">
+                <div class="contact-rows channel-contact-rows">
+                  <span>&#23458;&#25143;&#26165;&#31216;&#65288;&#21487;&#22810;&#36873;&#65289;</span>
+                  <label class="contact-row">
+                    <input type="checkbox" name="contactPlatform" value="&#24494;&#20449;" />
+                    <strong>&#24494;&#20449;</strong>
+                    <input name="contactNickname_wechat" placeholder="&#24494;&#20449;&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="contactPlatform" value="QQ" />
+                    <strong>QQ</strong>
+                    <input name="contactNickname_qq" placeholder="QQ&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="contactPlatform" value="TG" />
+                    <strong>TG</strong>
+                    <input name="contactNickname_tg" placeholder="TG&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="contactPlatform" value="&#38386;&#40060;" />
+                    <strong>&#38386;&#40060;</strong>
+                    <input name="contactNickname_xianyu" placeholder="&#38386;&#40060;&#26165;&#31216;" />
+                  </label>
+                </div>
+                <div class="contact-rows channel-contact-rows">
+                  <span>&#23458;&#26381;&#26165;&#31216;&#65288;&#21487;&#22810;&#36873;&#65289;</span>
+                  <label class="contact-row">
+                    <input type="checkbox" name="tradePlatform" value="&#24494;&#20449;" />
+                    <strong>&#24494;&#20449;</strong>
+                    <input name="tradeNickname_wechat" placeholder="&#24494;&#20449;&#23458;&#26381;&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="tradePlatform" value="QQ" />
+                    <strong>QQ</strong>
+                    <input name="tradeNickname_qq" placeholder="QQ&#23458;&#26381;&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="tradePlatform" value="TG" />
+                    <strong>TG</strong>
+                    <input name="tradeNickname_tg" placeholder="TG&#23458;&#26381;&#26165;&#31216;" />
+                  </label>
+                  <label class="contact-row">
+                    <input type="checkbox" name="tradePlatform" value="&#38386;&#40060;" />
+                    <strong>&#38386;&#40060;</strong>
+                    <input name="tradeNickname_xianyu" placeholder="&#38386;&#40060;&#23458;&#26381;&#26165;&#31216;" />
+                  </label>
+                </div>
+              </div>
+              <div class="split">
+                <label>
+                  &#37329;&#39069;
+                  <input name="amount" inputmode="decimal" placeholder="398" required />
+                </label>
+                <label>
+                  &#25104;&#26412;
+                  <input name="cost" inputmode="decimal" placeholder="0" />
+                </label>
+              </div>
+              <div class="split payment-method-row">
+                <label>
+                  &#25903;&#20184;&#26041;&#24335;
+                  <select name="paymentMethod">
+                    <option value="">&#26410;&#36873;&#25321;</option>
+                    <option value="&#24494;&#20449;">&#24494;&#20449;</option>
+                    <option value="&#25903;&#20184;&#23453;">&#25903;&#20184;&#23453;</option>
+                    <option value="&#38134;&#34892;&#21345;">&#38134;&#34892;&#21345;</option>
+                    <option value="&#20132;&#26131;&#25152;">&#20132;&#26131;&#25152;</option>
+                    <option value="&#38065;&#21253;">&#38065;&#21253;</option>
+                  </select>
+                </label>
+                <label>
+                  &#25903;&#20184;&#22791;&#27880;
+                  <input name="paymentNote" placeholder="&#22635;&#20889;&#25903;&#20184;&#22791;&#27880;" />
+                </label>
+              </div>
+              <label>
+                &#22791;&#27880;
+                <textarea name="note" rows="2" placeholder="&#20363;&#22914;&#65306;&#24050;&#20132;&#20184; / &#24453;&#34917;&#20805; / &#39118;&#38505;&#24050;&#21578;&#30693;"></textarea>
+              </label>
+              <div class="card-actions">
+                <button class="primary" type="submit">&#35760;&#24405;&#28192;&#36947;&#21806;&#21334;</button>
+                <button class="text-button" id="clearChannelSaleBtn" type="button">&#28165;&#31354;</button>
+              </div>
+            </form>
+
+            <div class="finance-grid channel-sales-grid">
+              <section>
+                <h2>&#20135;&#21697;&#27719;&#24635;</h2>
+                <div class="table-wrap finance-table-wrap">
+                  <table id="channelProductTable"></table>
+                </div>
+              </section>
+              <section>
+                <h2>&#21806;&#21334;&#26126;&#32454;</h2>
+                <div class="table-wrap finance-table-wrap">
+                  <table id="channelSaleTable"></table>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div id="appSaleDetailsView" class="view">
+            <form id="appSaleDetailForm" class="app-sale-detail-form">
+              <label>
+                APP
+                <input name="app" list="platformFilterOptions" placeholder="&#36873;&#25321;&#25110;&#36755;&#20837;APP" required />
+              </label>
+              <section class="app-sale-channel-editor">
+                <div class="section-title-row">
+                  <h3>购买渠道明细</h3>
+                  <div class="channel-option-tools">
+                    <select id="appSaleChannelOptionSelect" aria-label="购买渠道选项"></select>
+                    <button class="text-button" id="addAppSaleChannelOptionBtn" type="button">增加渠道</button>
+                    <button class="danger-button" id="deleteAppSaleChannelOptionBtn" type="button">删除渠道</button>
+                  </div>
+                </div>
+                <div id="appSaleChannelRows" class="app-sale-channel-rows"></div>
+              </section>
+              <div class="card-actions">
+                <button class="primary" type="submit">&#20445;&#23384;APP&#35201;&#28857;</button>
+                <button class="text-button" id="clearAppSaleDetailBtn" type="button">&#28165;&#31354;</button>
+              </div>
+            </form>
+
+            <div class="app-sale-detail-filter">
+              <label>
+                APP筛选
+                <select id="appSaleDetailFilter"></select>
+              </label>
+            </div>
+            <div class="table-wrap app-sale-detail-wrap">
+              <table id="appSaleDetailTable"></table>
             </div>
           </div>
         </section>

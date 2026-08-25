@@ -930,7 +930,8 @@ td:first-child span {
 }
 
 .finance-summary,
-.customer-summary {
+.customer-summary,
+.channel-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(160px, 1fr));
   gap: 10px;
@@ -938,7 +939,8 @@ td:first-child span {
 }
 
 .finance-summary article,
-.customer-summary article {
+.customer-summary article,
+.channel-summary article {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -946,14 +948,16 @@ td:first-child span {
 }
 
 .finance-summary span,
-.customer-summary span {
+.customer-summary span,
+.channel-summary span {
   display: block;
   color: var(--muted);
   font-size: 13px;
 }
 
 .finance-summary strong,
-.customer-summary strong {
+.customer-summary strong,
+.channel-summary strong {
   display: block;
   margin-top: 8px;
   font-size: 28px;
@@ -974,12 +978,15 @@ td:first-child span {
   max-height: 420px;
 }
 
-.customer-table-wrap {
+.customer-table-wrap,
+.channel-table-wrap {
   max-height: calc(100vh - 300px);
 }
 
 .finance-table-wrap table,
-.customer-table-wrap table {
+.customer-table-wrap table,
+.channel-table-wrap table,
+.app-sale-detail-wrap table {
   width: 100%;
   min-width: 0;
 }
@@ -987,7 +994,11 @@ td:first-child span {
 .finance-table-wrap th,
 .finance-table-wrap td,
 .customer-table-wrap th,
-.customer-table-wrap td {
+.customer-table-wrap td,
+.channel-table-wrap th,
+.channel-table-wrap td,
+.app-sale-detail-wrap th,
+.app-sale-detail-wrap td {
   min-width: 0;
   max-width: none;
   height: auto;
@@ -995,6 +1006,118 @@ td:first-child span {
   vertical-align: middle;
 }
 
+
+.app-sale-channel-editor {
+  display: grid;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section-title-row h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.channel-option-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.channel-option-tools select {
+  min-width: 160px;
+}
+
+.app-sale-channel-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.app-sale-channel-row .channel-row-head {
+  display: none;
+}
+.app-sale-channel-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.channel-row-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.channel-row-head label {
+  flex: 1;
+  min-width: 180px;
+}
+
+.add-channel-row {
+  justify-self: start;
+}
+.app-sale-detail-wrap {
+  max-height: calc(100vh - 280px);
+}
+
+.app-sale-detail-filter {
+  margin: 4px 0 10px;
+  max-width: 260px;
+}
+
+.app-sale-detail-wrap table {
+  min-width: 1280px;
+}
+
+.app-sale-detail-wrap th,
+.app-sale-detail-wrap td {
+  font-size: 13px;
+  line-height: 1.45;
+  vertical-align: top;
+}
+
+.app-sale-detail-wrap td {
+  min-width: 96px;
+  max-width: 240px;
+  white-space: pre-line;
+}
+
+.app-sale-detail-wrap td:nth-child(1),
+.app-sale-detail-wrap td:nth-child(2),
+.app-sale-detail-wrap td:nth-child(3),
+.app-sale-detail-wrap td:nth-child(4),
+.app-sale-detail-wrap td:nth-child(5),
+.app-sale-detail-wrap td:nth-child(6) {
+  min-width: 90px;
+  max-width: 140px;
+  white-space: normal;
+}
+
+.app-sale-detail-wrap td:nth-child(7),
+.app-sale-detail-wrap td:nth-child(8),
+.app-sale-detail-wrap td:nth-child(9),
+.app-sale-detail-wrap td:nth-child(10) {
+  min-width: 180px;
+}
+
+.app-sale-detail-wrap td:nth-child(11) {
+  min-width: 116px;
+  white-space: normal;
+}
 .negative {
   color: #ba3b35;
 }
@@ -1122,6 +1245,34 @@ td:first-child span {
   text-align: center;
 }
 
+
+
+.channel-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.channel-contact-grid .contact-rows {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.channel-sale-form,
+.app-sale-detail-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.channel-sales-grid {
+  grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);
+}
 @media (max-width: 900px) {
   .shell {
     padding: 14px;
@@ -1140,7 +1291,9 @@ td:first-child span {
 
   .finance-summary,
   .customer-summary,
-  .finance-grid {
+  .channel-summary,
+  .finance-grid,
+  .channel-contact-grid {
     grid-template-columns: 1fr;
   }
 
