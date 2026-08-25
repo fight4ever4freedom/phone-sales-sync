@@ -30,6 +30,7 @@ const statuses = [
 
 const contactPlatforms = ["\u95f2\u9c7c", "QQ", "\u5fae\u4fe1", "TG"];
 const defaultAppSaleChannels = ["自己厅卡", "自己虚拟卡", "接码平台", "接码群"];
+const productConversionStartMonth = "2026-08";
 
 const storageKey = "phone-sales-manager-v1";
 const syncEnabled = location.protocol === "http:" || location.protocol === "https:";
@@ -123,6 +124,7 @@ const els = {
   channelProductTable: document.querySelector("#channelProductTable"),
   channelSaleTable: document.querySelector("#channelSaleTable"),
   channelConversionTable: document.querySelector("#channelConversionTable"),
+  channelMonthlyConversionTable: document.querySelector("#channelMonthlyConversionTable"),
   appSaleDetailTable: document.querySelector("#appSaleDetailTable"),
   appSaleDetailFilter: document.querySelector("#appSaleDetailFilter"),
   appSaleChannelRows: document.querySelector("#appSaleChannelRows"),
@@ -764,9 +766,28 @@ function renderChannelSales() {
 
 function renderChannelConversionTable() {
   if (!els.channelConversionTable) return;
-  const rows = channelConversionRows();
+  const rows = channelOverallConversionRows();
   els.channelConversionTable.innerHTML = financeTable(
-    ["月份", "产品", "转化次数", "接码用户人数", "转化率", "销售金额"],
+    ["产品", "累计转化次数", "累计接码用户人数", "整体转化率", "累计销售金额", "最近成交月份"],
+    rows.map((row) => [
+      row.product,
+      row.conversions,
+      row.userCount,
+      formatPercent(row.rate),
+      currency(row.amount),
+      row.latestMonth || "未填写",
+    ]),
+    6,
+    "暂无产品整体转化率数据",
+  );
+  renderChannelMonthlyConversionTable();
+}
+
+function renderChannelMonthlyConversionTable() {
+  if (!els.channelMonthlyConversionTable) return;
+  const rows = channelMonthlyConversionRows();
+  els.channelMonthlyConversionTable.innerHTML = financeTable(
+    ["月份", "产品", "转化次数", "接码用户人数", "月转化率", "销售金额"],
     rows.map((row) => [
       row.month,
       row.product,
@@ -776,11 +797,40 @@ function renderChannelConversionTable() {
       currency(row.amount),
     ]),
     6,
-    "暂无产品转化率数据",
+    "暂无产品月转化率数据",
   );
 }
 
-function channelConversionRows() {
+function channelOverallConversionRows() {
+  const allUsers = new Set();
+  paidRecords().forEach((item) => {
+    if (!isProductConversionMonth(recordMonth(item))) return;
+    allUsers.add(channelConversionRecordUserKey(item));
+  });
+  const userCount = allUsers.size;
+  const productMap = new Map();
+  (data.channelSales || []).forEach((item) => {
+    const month = recordMonth(item);
+    if (!isProductConversionMonth(month)) return;
+    const product = item.product || "未填写产品";
+    if (!productMap.has(product)) {
+      productMap.set(product, { product, conversions: 0, amount: 0, latestMonth: "" });
+    }
+    const row = productMap.get(product);
+    row.conversions += 1;
+    row.amount += Number(item.amount || 0);
+    if (month && month > row.latestMonth) row.latestMonth = month;
+  });
+  return [...productMap.values()]
+    .map((row) => ({
+      ...row,
+      userCount,
+      rate: userCount ? row.conversions / userCount : 0,
+    }))
+    .sort((a, b) => b.rate - a.rate || b.conversions - a.conversions || b.amount - a.amount);
+}
+
+function channelMonthlyConversionRows() {
   const usersByMonth = new Map();
   paidRecords().forEach((item) => {
     const month = recordMonth(item);
@@ -813,6 +863,9 @@ function channelConversionRows() {
       };
     })
     .sort((a, b) => b.month.localeCompare(a.month) || b.conversions - a.conversions || b.amount - a.amount);
+}
+function isProductConversionMonth(month) {
+  return !!month && month >= productConversionStartMonth;
 }
 
 function channelConversionRecordUserKey(item) {
