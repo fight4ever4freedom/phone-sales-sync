@@ -1270,6 +1270,9 @@ td:first-child span {
   background: var(--surface);
 }
 
+.channel-conversion-section {
+  grid-column: 1 / -1;
+}
 .channel-sales-grid {
   grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);
 }

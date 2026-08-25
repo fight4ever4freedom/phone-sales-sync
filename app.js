@@ -122,6 +122,7 @@ const els = {
   channelSaleProfit: document.querySelector("#channelSaleProfit"),
   channelProductTable: document.querySelector("#channelProductTable"),
   channelSaleTable: document.querySelector("#channelSaleTable"),
+  channelConversionTable: document.querySelector("#channelConversionTable"),
   appSaleDetailTable: document.querySelector("#appSaleDetailTable"),
   appSaleDetailFilter: document.querySelector("#appSaleDetailFilter"),
   appSaleChannelRows: document.querySelector("#appSaleChannelRows"),
@@ -758,8 +759,72 @@ function renderChannelSales() {
   els.channelSaleTable.querySelectorAll(".delete-channel-sale").forEach((button) => {
     button.addEventListener("click", () => deleteChannelSale(button.dataset.id));
   });
+  renderChannelConversionTable();
 }
 
+function renderChannelConversionTable() {
+  if (!els.channelConversionTable) return;
+  const rows = channelConversionRows();
+  els.channelConversionTable.innerHTML = financeTable(
+    ["月份", "产品", "转化次数", "接码用户人数", "转化率", "销售金额"],
+    rows.map((row) => [
+      row.month,
+      row.product,
+      row.conversions,
+      row.userCount,
+      formatPercent(row.rate),
+      currency(row.amount),
+    ]),
+    6,
+    "暂无产品转化率数据",
+  );
+}
+
+function channelConversionRows() {
+  const usersByMonth = new Map();
+  paidRecords().forEach((item) => {
+    const month = recordMonth(item);
+    if (!month) return;
+    if (!usersByMonth.has(month)) usersByMonth.set(month, new Set());
+    usersByMonth.get(month).add(channelConversionRecordUserKey(item));
+  });
+
+  const productMonthMap = new Map();
+  (data.channelSales || []).forEach((item) => {
+    const month = recordMonth(item);
+    if (!month) return;
+    const product = item.product || "未填写产品";
+    const key = `${month}||${product}`;
+    if (!productMonthMap.has(key)) {
+      productMonthMap.set(key, { month, product, conversions: 0, amount: 0 });
+    }
+    const row = productMonthMap.get(key);
+    row.conversions += 1;
+    row.amount += Number(item.amount || 0);
+  });
+
+  return [...productMonthMap.values()]
+    .map((row) => {
+      const userCount = usersByMonth.get(row.month)?.size || 0;
+      return {
+        ...row,
+        userCount,
+        rate: userCount ? row.conversions / userCount : 0,
+      };
+    })
+    .sort((a, b) => b.month.localeCompare(a.month) || b.conversions - a.conversions || b.amount - a.amount);
+}
+
+function channelConversionRecordUserKey(item) {
+  const contacts = customerContacts(item);
+  const nicknames = contacts.map((contact) => String(contact?.nickname || "").trim()).filter(Boolean);
+  if (nicknames.length) return nicknames[0].toLowerCase();
+  return `record:${item.id}`;
+}
+
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
 function deleteChannelSale(id) {
   if (!confirm("确定删除这条渠道售卖记录？")) return;
   pushUndo();
