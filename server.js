@@ -6,6 +6,9 @@ const os = require("os");
 const root = __dirname;
 const dataDir = process.env.DATA_DIR || root;
 const dataFile = path.join(dataDir, "data.json");
+const backupDir = process.env.BACKUP_DIR || path.join(dataDir, "backups");
+const maxBackupFiles = Number(process.env.MAX_BACKUP_FILES || 720);
+const backupIntervalMs = Number(process.env.BACKUP_INTERVAL_MS || 60 * 60 * 1000);
 const port = Number(process.env.PORT || 8787);
 const syncToken = process.env.SYNC_TOKEN || "";
 
@@ -38,7 +41,7 @@ const server = http.createServer(async (req, res) => {
           sendJson(res, 400, { error: "bad data" });
           return;
         }
-        fs.writeFileSync(dataFile, JSON.stringify(parsed, null, 2), "utf8");
+        writeData(parsed);
         sendJson(res, 200, { ok: true });
         return;
       }
@@ -54,7 +57,10 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, "0.0.0.0", () => {
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  ensureDataDir();
+  backupCurrentData("startup");
+  const backupTimer = setInterval(() => backupCurrentData("timer"), backupIntervalMs);
+  if (backupTimer.unref) backupTimer.unref();
   console.log(`Sync server running: http://localhost:${port}`);
   for (const address of localAddresses()) {
     console.log(`LAN address: http://${address}:${port}`);
@@ -72,6 +78,52 @@ function isAuthorized(req) {
 function readData() {
   if (!fs.existsSync(dataFile)) return {};
   return JSON.parse(fs.readFileSync(dataFile, "utf8"));
+}
+
+function writeData(value) {
+  ensureDataDir();
+  fs.writeFileSync(dataFile, JSON.stringify(value, null, 2), "utf8");
+  backupCurrentData("save");
+}
+
+function ensureDataDir() {
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+}
+
+function backupCurrentData(reason) {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(dataFile)) return;
+    const backupFile = path.join(backupDir, `data-${backupStamp()}.json`);
+    fs.copyFileSync(dataFile, backupFile);
+    pruneBackups();
+    console.log(`Backup saved (${reason}): ${backupFile}`);
+  } catch (error) {
+    console.error(`Backup failed: ${error.message}`);
+  }
+}
+
+function backupStamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+  ].join("");
+}
+
+function pruneBackups() {
+  const files = fs
+    .readdirSync(backupDir)
+    .filter((name) => /^data-\d{10}\.json$/.test(name))
+    .sort();
+  const overflow = files.length - maxBackupFiles;
+  if (overflow <= 0) return;
+  for (const name of files.slice(0, overflow)) {
+    fs.rmSync(path.join(backupDir, name), { force: true });
+  }
 }
 
 function readBody(req) {
