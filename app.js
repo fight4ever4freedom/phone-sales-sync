@@ -240,7 +240,8 @@ function bindEvents() {
   document.querySelector("#clearAppSaleDetailBtn")?.addEventListener("click", clearAppSaleDetailForm);
   document.querySelector("#addAppBtn").addEventListener("click", addAppOption);
   document.querySelector("#deleteAppBtn").addEventListener("click", deleteAppOption);
-  document.querySelector("#githubSyncBtn").addEventListener("click", setupGitHubSync);
+  const githubSyncBtn = document.querySelector("#githubSyncBtn");
+  if (githubSyncBtn) githubSyncBtn.addEventListener("click", setupGitHubSync);
 
   document.querySelector("#exportBtn").addEventListener("click", exportData);
   document.querySelector("#importFile").addEventListener("change", importData);
@@ -2080,8 +2081,6 @@ async function loadData() {
     const remote = await loadRemoteData();
     if (remote) return remote;
   }
-  const githubRemote = await loadGitHubData();
-  if (githubRemote) return githubRemote;
   const raw = localStorage.getItem(storageKey);
   if (!raw) return normalizeData({ ...cloneData(demoData), platforms: [...defaultPlatforms] });
   try {
@@ -2096,7 +2095,6 @@ function persist() {
   persistLocalOnly();
   setSyncStatus("\u672c\u5730\u5df2\u4fdd\u5b58");
   if (syncEnabled) saveRemoteData();
-  scheduleGitHubSync();
 }
 
 function persistLocalOnly() {
