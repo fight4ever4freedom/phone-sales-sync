@@ -1944,7 +1944,28 @@ async function copyPhoneNumber(number) {
     await navigator.clipboard.writeText(number);
     toast("\u624b\u673a\u53f7\u5df2\u590d\u5236");
   } catch {
-    prompt("\u590d\u5236\u624b\u673a\u53f7", number);
+    // 兼容非 HTTPS 或剪贴板权限受限的环境：直接复制，不弹出输入框。
+    const helper = document.createElement("textarea");
+    helper.value = number;
+    helper.setAttribute("readonly", "");
+    helper.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none;font-size:16px";
+    const previousFocus = document.activeElement;
+    document.body.appendChild(helper);
+    let copied = false;
+    try {
+      helper.focus({ preventScroll: true });
+      helper.select();
+      helper.setSelectionRange(0, helper.value.length);
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    } finally {
+      helper.remove();
+      if (previousFocus && typeof previousFocus.focus === "function") {
+        previousFocus.focus({ preventScroll: true });
+      }
+    }
+    toast(copied ? "\u624b\u673a\u53f7\u5df2\u590d\u5236" : "\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5");
   }
 }
 
